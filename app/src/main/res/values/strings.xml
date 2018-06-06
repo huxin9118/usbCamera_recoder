@@ -1,3 +1,20 @@
 <resources>
     <string name="app_name">usbCamera</string>
+
+    <string name="uvc_dialog_setting_title">Camera Parameter</string>
+    <string name="uvc_dialog_setting_reset">Reset</string>
+    <string name="uvc_auto_focus">Auto Focus</string>
+    <string name="uvc_focus">Focus</string>
+    <string name="uvc_auto_contrast">Auto Contrast</string>
+    <string name="uvc_contrast">Contrast</string>
+    <string name="uvc_auto_hue">Auto Hue</string>
+    <string name="uvc_hue">Hue</string>
+    <string name="uvc_auto_white_balance">Auto White Balance</string>
+    <string name="uvc_white_balance">White Balance</string>
+    <string name="uvc_brightness">Brightness</string>
+    <string name="uvc_saturation">Saturation</string>
+    <string name="uvc_sharpness">Sharpness</string>
+    <string name="uvc_gamma">Gamma</string>
+    <string name="uvc_backlight">Backlight</string>
+    <string name="uvc_gain">Gain</string>
 </resources>

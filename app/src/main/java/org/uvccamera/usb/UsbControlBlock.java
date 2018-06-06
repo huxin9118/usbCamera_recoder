@@ -27,8 +27,8 @@ public class UsbControlBlock implements  Cloneable{
     public UsbControlBlock(final USBMonitor monitor, final UsbDevice device) {
         mWeakMonitor = new WeakReference<USBMonitor>(monitor);
         mWeakDevice = new WeakReference<UsbDevice>(device);
-        mConnection = monitor.getmUsbManager().openDevice(device);
-        mInfo = updateDeviceInfo(monitor.getmUsbManager(), device, null);
+        mConnection = monitor.getUsbManager().openDevice(device);
+        mInfo = updateDeviceInfo(monitor.getUsbManager(), device, null);
 
         String name = device.getDeviceName();
         String[] v = !TextUtils.isEmpty(name) ? name.split("/") : null;
@@ -149,11 +149,11 @@ public class UsbControlBlock implements  Cloneable{
         if (device == null) {
             throw new IllegalStateException("device may already be removed");
         }
-        mConnection = monitor.getmUsbManager().openDevice(device);
+        mConnection = monitor.getUsbManager().openDevice(device);
         if (mConnection == null) {
             throw new IllegalStateException("device may already be removed or have no permission");
         }
-        mInfo = updateDeviceInfo(monitor.getmUsbManager(), device, null);
+        mInfo = updateDeviceInfo(monitor.getUsbManager(), device, null);
         mWeakMonitor = new WeakReference<USBMonitor>(monitor);
         mWeakDevice = new WeakReference<UsbDevice>(device);
         mBusNum = src.mBusNum;

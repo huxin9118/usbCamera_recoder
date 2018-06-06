@@ -1,0 +1,20 @@
+<resources>
+    <string name="app_name">usbCamera</string>
+
+    <string name="uvc_dialog_setting_title">摄像头参数</string>
+    <string name="uvc_dialog_setting_reset">还原</string>
+    <string name="uvc_auto_focus">自动对焦</string>
+    <string name="uvc_focus">焦距</string>
+    <string name="uvc_auto_contrast">自动对比度</string>
+    <string name="uvc_contrast">对比度</string>
+    <string name="uvc_auto_hue">自动色调</string>
+    <string name="uvc_hue">色调</string>
+    <string name="uvc_auto_white_balance">自动白平衡</string>
+    <string name="uvc_white_balance">白平衡</string>
+    <string name="uvc_brightness">亮度</string>
+    <string name="uvc_saturation">饱和度</string>
+    <string name="uvc_sharpness">锐度</string>
+    <string name="uvc_gamma">伽马</string>
+    <string name="uvc_backlight">背光补偿</string>
+    <string name="uvc_gain">信号增益</string>
+</resources>

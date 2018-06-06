@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:title="网络流"
+        android:id="@+id/action_stream_media"
+        android:orderInCategory="0"
+        app:showAsAction="never"/>
+
+    <item
+        android:title="解码器"
+        android:id="@+id/action_codec_type"
+        android:orderInCategory="1"
+        app:showAsAction="never"/>
+
+</menu>

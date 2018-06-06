@@ -28,25 +28,21 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.graphics.YuvImage;
 import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbManager;
-import android.os.Environment;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.SurfaceHolder;
-import android.view.SurfaceView;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.mediacodec.MPEG4Encoder;
 
-import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -68,10 +64,29 @@ public final class USBMonitor {
 	private SurfaceHolder surfaceHolder = null;
 	private boolean isCapture = false;
 	private OnDeviceConnectListener mOnDeviceConnectListener;
-	public List<UsbFrameSize> mSupportedSizeList = null;
+	private List<UsbFrameSize> mSupportedSizeList = null;
+
+	private boolean isAutoFocus;
+	private boolean isFocus;
+	private boolean isAutoContrast;
+	private boolean isContrast;
+	private boolean isAutoHue;
+	private boolean isHue;
+	private boolean isAutoWhiteBalance;
+	private boolean isWhiteBalance;
+	private boolean isBrightness;
+	private boolean isSaturation;
+	private boolean isSharpness;
+	private boolean isGamma;
+	private boolean isBacklight;
+	private boolean isGain;
+
 	//debug
 	FileOutputStream outputStream;
 	private static int index = 0;
+
+	private MPEG4Encoder mEncoder;
+//	private HH264Encoder mEncoder;
 
 	public USBMonitor(final Context context) {
 		mWeakContext = new WeakReference<Context>(context);
@@ -131,6 +146,8 @@ public final class USBMonitor {
 	public void startCapture(int width, int height, int rotate) {
 		Log.i(TAG, "startCapture");
 		if(device != null && mUVCCamera != null && surfaceHolder != null && getUsbCameraConnect()  && !isCapture()) {
+			mOnDeviceConnectListener.onStartPreview();
+
 			if(!TextUtils.isEmpty(mUVCCamera.mSupportedSize)) {
 				Log.i(TAG, "supportedSize:" + mUVCCamera.mSupportedSize);
 			}
@@ -145,29 +162,29 @@ public final class USBMonitor {
 			mUVCCamera.startPreview();
 			isCapture = true;
 
-			if (outputStream == null) {
-				boolean sdCardExist = Environment.getExternalStorageState()
-						.equals(Environment.MEDIA_MOUNTED);
-				if(sdCardExist) {
-					File env = Environment.getExternalStorageDirectory();
-					File file = new File(env.toString() + "/NV12_1280x720.yuv");
-					if(file.exists()){
-						file.delete();
-					}
-					try {
-						file.createNewFile();
-					} catch (IOException e) {
-						Log.e(TAG, " createNewFile error");
-					}
-					if(file.exists()) {
-						try {
-							outputStream = new FileOutputStream(file);
-						} catch (FileNotFoundException e) {
-							Log.e(TAG, "new FileOutputStream(file) error");
-						}
-					}
-				}
-			}
+//			if (outputStream == null) {
+//				boolean sdCardExist = Environment.getExternalStorageState()
+//						.equals(Environment.MEDIA_MOUNTED);
+//				if(sdCardExist) {
+//					File env = Environment.getExternalStorageDirectory();
+//					File file = new File(env.toString() + "/NV12_1280x720.yuv");
+//					if(file.exists()){
+//						file.delete();
+//					}
+//					try {
+//						file.createNewFile();
+//					} catch (IOException e) {
+//						Log.e(TAG, " createNewFile error");
+//					}
+//					if(file.exists()) {
+//						try {
+//							outputStream = new FileOutputStream(file);
+//						} catch (FileNotFoundException e) {
+//							Log.e(TAG, "new FileOutputStream(file) error");
+//						}
+//					}
+//				}
+//			}
 		}
 	}
 
@@ -176,21 +193,53 @@ public final class USBMonitor {
 		if(device != null && mUVCCamera != null && getUsbCameraConnect() && isCapture()) {
 			isCapture = false;
 			mUVCCamera.stopPreview();
-			try{
-				if(outputStream != null)
-					outputStream.close();
-			}catch (IOException e){
-				Log.e(TAG , " outputStream close error");
-			}
 
-			if(outputStream != null){
-				try {
-					outputStream.close();
-					outputStream = null;
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-			}
+//			try{
+//				if(outputStream != null)
+//					outputStream.close();
+//			}catch (IOException e){
+//				Log.e(TAG , " outputStream close error");
+//			}
+//
+//			if(outputStream != null){
+//				try {
+//					outputStream.close();
+//					outputStream = null;
+//				} catch (IOException e) {
+//					e.printStackTrace();
+//				}
+//			}
+
+			mOnDeviceConnectListener.onStopPreview();
+		}
+	}
+
+	public void startRecoder(int width, int height, int frameRate, int bitRate, String outputPath, int rotate) {
+		if(mEncoder != null && !isCapture()){
+			mEncoder.close();
+			mEncoder = null;
+		}
+		mEncoder = new MPEG4Encoder(width, height, frameRate, bitRate, outputPath, rotate);
+//		mEncoder = new HH264Encoder(width, height, frameRate, bitRate);
+		mEncoder.open();
+	}
+
+	/**
+	 * Get a YUVImage from mEncoder,
+	 * Use the Function After startRecoder() and Before stopRecoder().
+	 * @return
+	 */
+	public YuvImage getThumbnailImage() {
+		if(mEncoder != null){
+			return mEncoder.getThumbnailImage();
+		}
+		return null;
+	}
+
+	public void stopRecoder() {
+		if(mEncoder != null && isCapture()){
+			mEncoder.close();
+			mEncoder = null;
 		}
 	}
 
@@ -208,19 +257,24 @@ public final class USBMonitor {
 	private final IFrameCallback frameCallback = new IFrameCallback() {
 		@Override
 		public void onFrame(ByteBuffer frame) {
-			Log.e(TAG, "receive the ["+index+"] frame!");
+//			Log.e(TAG, "receive the ["+index+"] frame!");
+//			if(outputStream != null) {
+//				try {
+//					byte[] byteFrame = new byte[frame.remaining()];
+//					frame.get(byteFrame, 0, byteFrame.length);
+//
+//					outputStream.write(byteFrame);
+//				} catch (Exception e) {
+//					e.printStackTrace();
+//					Log.e(TAG, " fileChannel write error");
+//				}
+//				index ++;
+//			}
 
-			if(outputStream != null) {
-				try {
-					byte[] byteFrame = new byte[frame.remaining()];
-					frame.get(byteFrame, 0, byteFrame.length);
-
-					outputStream.write(byteFrame);
-				} catch (Exception e) {
-					e.printStackTrace();
-					Log.e(TAG, " fileChannel write error");
-				}
-				index ++;
+			if(mEncoder != null && mEncoder.isOpen()) {
+				byte[] byteFrame = new byte[frame.remaining()];
+				frame.get(byteFrame, 0, byteFrame.length);
+				mEncoder.encode(byteFrame, 0, new byte[1920*1080*3/2], byteFrame.length);
 			}
 		}
 	};
@@ -228,7 +282,6 @@ public final class USBMonitor {
 	private final BroadcastReceiver mUsbReceiver = new BroadcastReceiver() {
 		@Override
 		public void onReceive(final Context context, final Intent intent) {
-
 			final String action = intent.getAction();
 			if (ACTION_USB_PERMISSION.equals(action)) {
 				// when received the result of requesting USB permission
@@ -270,6 +323,7 @@ public final class USBMonitor {
 				synchronized (this) {
 					device = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
 					if (device != null) {
+						stopRecoder();
 						stopCapture();
 						releaseCamera();
 						mOnDeviceConnectListener.onDettach(device);
@@ -304,7 +358,7 @@ public final class USBMonitor {
 					Log.i(TAG, "releaseCamera: ");
 					mUVCCamera.setStatusCallback(null);
 					mUVCCamera.close();
-					mUVCCamera.destory();
+					mUVCCamera.destroy();
 
 				}catch (final Exception e){
 					e.printStackTrace();
@@ -330,6 +384,35 @@ public final class USBMonitor {
 
 				Log.i("UVC", "mSupportedSizeList: "+mSupportedSizeList);
 			}
+
+			isAutoFocus = mUVCCamera.checkSupportFlag(UVCCamera.CTRL_FOCUS_AUTO);
+			isFocus = mUVCCamera.checkSupportFlag(UVCCamera.CTRL_FOCUS_ABS);
+			isAutoContrast = mUVCCamera.checkSupportFlag(UVCCamera.PU_CONTRAST_AUTO);
+			isContrast = mUVCCamera.checkSupportFlag(UVCCamera.PU_CONTRAST);
+			isAutoHue = mUVCCamera.checkSupportFlag(UVCCamera.PU_HUE_AUTO);
+			isHue = mUVCCamera.checkSupportFlag(UVCCamera.PU_HUE);
+			isAutoWhiteBalance = mUVCCamera.checkSupportFlag(UVCCamera.PU_WB_TEMP_AUTO);
+			isWhiteBalance = mUVCCamera.checkSupportFlag(UVCCamera.PU_WB_TEMP);
+			isBrightness = mUVCCamera.checkSupportFlag(UVCCamera.PU_BRIGHTNESS);
+			isSaturation = mUVCCamera.checkSupportFlag(UVCCamera.PU_SATURATION);
+			isSharpness = mUVCCamera.checkSupportFlag(UVCCamera.PU_SHARPNESS);
+			isGamma = mUVCCamera.checkSupportFlag(UVCCamera.PU_GAMMA);
+			isBacklight = mUVCCamera.checkSupportFlag(UVCCamera.PU_BACKLIGHT);
+			isGain = mUVCCamera.checkSupportFlag(UVCCamera.PU_GAIN);
+			Log.e(TAG, "connectCamera: CTRL_FOCUS_AUTO  ["+isAutoFocus+"]");
+			Log.e(TAG, "connectCamera: CTRL_FOCUS_ABS   ["+isFocus+"]");
+			Log.e(TAG, "connectCamera: PU_CONTRAST_AUTO ["+isAutoContrast+"]");
+			Log.e(TAG, "connectCamera: PU_CONTRAST      ["+isContrast+"]");
+			Log.e(TAG, "connectCamera: PU_HUE_AUTO      ["+isAutoHue+"]");
+			Log.e(TAG, "connectCamera: PU_HUE           ["+isHue+"]");
+			Log.e(TAG, "connectCamera: PU_WB_TEMP_AUTO  ["+isAutoWhiteBalance+"]");
+			Log.e(TAG, "connectCamera: PU_WB_TEMP       ["+isWhiteBalance+"]");
+			Log.e(TAG, "connectCamera: PU_BRIGHTNESS    ["+isBrightness+"]");
+			Log.e(TAG, "connectCamera: PU_SATURATION    ["+isSaturation+"]");
+			Log.e(TAG, "connectCamera: PU_SHARPNESS     ["+isSharpness+"]");
+			Log.e(TAG, "connectCamera: PU_GAMMA         ["+isGamma+"]");
+			Log.e(TAG, "connectCamera: PU_BACKLIGHT     ["+ isBacklight +"]");
+			Log.e(TAG, "connectCamera: PU_GAIN          ["+isGain+"]");
 		}
 	}
 
@@ -340,7 +423,7 @@ public final class USBMonitor {
 					Log.i(TAG, "releaseCamera: ");
 					mUVCCamera.setStatusCallback(null);
 					mUVCCamera.close();
-					mUVCCamera.destory();
+					mUVCCamera.destroy();
 
 				}catch (final Exception e){
 					e.printStackTrace();
@@ -373,7 +456,71 @@ public final class USBMonitor {
 		this.mOnDeviceConnectListener = onDeviceConnectListener;
 	}
 
-	public UsbManager getmUsbManager() {
+	public List<UsbFrameSize> getSupportedSizeList() {
+		return mSupportedSizeList;
+	}
+
+	public UsbManager getUsbManager() {
 		return mUsbManager;
+	}
+
+	public UVCCamera getUVCCamera() {
+		return mUVCCamera;
+	}
+
+	public boolean isAutoFocus() {
+		return isAutoFocus;
+	}
+
+	public boolean isFocus() {
+		return isFocus;
+	}
+
+	public boolean isAutoContrast() {
+		return isAutoContrast;
+	}
+
+	public boolean isContrast() {
+		return isContrast;
+	}
+
+	public boolean isAutoHue() {
+		return isAutoHue;
+	}
+
+	public boolean isHue() {
+		return isHue;
+	}
+
+	public boolean isAutoWhiteBalance() {
+		return isAutoWhiteBalance;
+	}
+
+	public boolean isWhiteBalance() {
+		return isWhiteBalance;
+	}
+
+	public boolean isBrightness() {
+		return isBrightness;
+	}
+
+	public boolean isSaturation() {
+		return isSaturation;
+	}
+
+	public boolean isSharpness() {
+		return isSharpness;
+	}
+
+	public boolean isGamma() {
+		return isGamma;
+	}
+
+	public boolean isBacklight() {
+		return isBacklight;
+	}
+
+	public boolean isGain() {
+		return isGain;
 	}
 }

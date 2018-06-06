@@ -33,4 +33,8 @@ public interface OnDeviceConnectListener {
      * @param device
      */
     public void onCancel(UsbDevice device);
+
+    public void onStartPreview();
+
+    public void onStopPreview();
 }

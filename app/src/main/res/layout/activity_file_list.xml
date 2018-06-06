@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:layout_marginTop="20dp">
+
+    <!--<TextView-->
+        <!--android:id="@+id/label"-->
+        <!--android:layout_width="wrap_content"-->
+        <!--android:layout_height="wrap_content"-->
+        <!--android:layout_centerInParent="true"-->
+        <!--android:text="请点击选择YUV路径"-->
+        <!--android:textColor="@android:color/white"/>-->
+
+    <android.support.v7.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/lighter_gray"
+        app:title="播放列表"/>
+
+    <!--<RelativeLayout-->
+        <!--android:id="@+id/header"-->
+        <!--android:layout_width="match_parent"-->
+        <!--android:layout_height="wrap_content"-->
+        <!--android:layout_below="@id/toolbar"-->
+        <!--android:gravity="center_vertical"-->
+        <!--android:background="@color/lighter_gray">-->
+        <!--<TextView-->
+            <!--android:layout_width="wrap_content"-->
+            <!--android:layout_height="wrap_content"-->
+            <!--android:text="播放列表"-->
+            <!--android:textSize="20sp"-->
+            <!--android:layout_margin="10dp"/>-->
+    <!--</RelativeLayout>-->
+
+    <android.support.v7.widget.RecyclerView
+        android:id="@+id/recyclerView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@id/toolbar"
+        android:scrollbars="vertical" />
+
+    <android.support.design.widget.FloatingActionButton
+        android:id="@+id/floatingActionButton"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentRight="true"
+        android:layout_marginBottom="25dp"
+        android:layout_marginRight="25dp"
+        android:src="@drawable/ic_button_add"
+        app:borderWidth="0dp"
+        app:backgroundTint="@color/customBlue"
+        app:rippleColor="@color/colorPrimary"
+        app:elevation="5dp"
+        app:pressedTranslationZ="10dp"/>
+
+</RelativeLayout>
