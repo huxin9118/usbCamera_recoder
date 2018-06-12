@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/dialog"
+    android:orientation="vertical" android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="请输入URL,例如：\n        http://www.example.com/video.mkv\n        rstp://server.eaxmple:8554/test.sdp"
+        android:textSize="14sp"
+        android:layout_margin="10dp"/>
+
+    <!--android:text="rtsp://192.168.1.188/11"-->
+    <!--android:text="http://live.hkstv.hk.lxdns.com/live/hks/playlist.m3u8"-->
+    <EditText
+        android:id="@+id/urlText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="5dp"
+        android:gravity="center_vertical"
+        android:hint="请输入URL"
+        android:inputType="textUri"
+        android:minHeight="45dp"
+        android:textSize="16sp" />
+</LinearLayout>

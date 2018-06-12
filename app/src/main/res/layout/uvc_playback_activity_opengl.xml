@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/black">
+
+    <android.opengl.GLSurfaceView
+        android:id="@+id/mGLSurface"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_centerInParent="true"/>
+
+    <RelativeLayout
+        android:id="@+id/root"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@android:color/transparent">
+        <LinearLayout
+            android:id="@+id/bottomBar"
+            android:orientation="horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_alignParentBottom="true"
+            android:gravity="center_vertical"
+            android:background="#664c4c4c">
+
+            <RelativeLayout
+                android:id="@+id/btnBack"
+                android:layout_width="0px"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="@drawable/opengl_selector_bottom_button">
+                <ImageView
+                    android:id="@+id/imgBack"
+                    android:layout_width="@dimen/bottom_button_width_And_height"
+                    android:layout_height="@dimen/bottom_button_width_And_height"
+                    android:layout_centerInParent="true"
+                    android:src="@drawable/ic_button_back"/>
+            </RelativeLayout>
+
+            <RelativeLayout
+                android:id="@+id/btnBackward"
+                android:layout_width="0px"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="@drawable/opengl_selector_bottom_button">
+                <ImageView
+                    android:id="@+id/imgBackward"
+                    android:layout_width="@dimen/bottom_button_width_And_height"
+                    android:layout_height="@dimen/bottom_button_width_And_height"
+                    android:layout_centerInParent="true"
+                    android:src="@drawable/ic_button_backward"/>
+            </RelativeLayout>
+
+            <RelativeLayout
+                android:id="@+id/btnPause"
+                android:layout_width="0px"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="@drawable/opengl_selector_bottom_button">
+                <ImageView
+                    android:id="@+id/imgPause"
+                    android:layout_width="@dimen/bottom_button_width_And_height"
+                    android:layout_height="@dimen/bottom_button_width_And_height"
+                    android:layout_centerInParent="true"
+                    android:src="@drawable/ic_button_pause"/>
+            </RelativeLayout>
+
+            <RelativeLayout
+                android:id="@+id/btnForward"
+                android:layout_width="0px"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="@drawable/opengl_selector_bottom_button">
+                <ImageView
+                    android:id="@+id/imgForward"
+                    android:layout_width="@dimen/bottom_button_width_And_height"
+                    android:layout_height="@dimen/bottom_button_width_And_height"
+                    android:layout_centerInParent="true"
+                    android:src="@drawable/ic_button_forward"/>
+            </RelativeLayout>
+
+            <RelativeLayout
+                android:id="@+id/btnZoom"
+                android:layout_width="0px"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="@drawable/opengl_selector_bottom_button">
+                <ImageView
+                    android:id="@+id/imgZoom"
+                    android:layout_width="@dimen/bottom_button_width_And_height"
+                    android:layout_height="@dimen/bottom_button_width_And_height"
+                    android:layout_centerInParent="true"
+                    android:src="@drawable/ic_zoom_original"/>
+            </RelativeLayout>
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/progressBar"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:layout_above="@id/bottomBar"
+            android:gravity="center_vertical"
+
+            android:background="#664c4c4c">
+
+            <TextView
+                android:id="@+id/timeStart"
+                android:layout_width="60dp"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="5dp"
+                android:gravity="center"
+                android:text="0"
+                android:textColor="@android:color/white"/>
+
+            <SeekBar
+                android:id="@+id/progressRate"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="0px"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:layout_marginLeft="-15dp"
+                android:layout_marginRight="-15dp"
+                android:paddingTop="15dp"
+                android:paddingBottom="15dp"
+                android:max="100"
+                android:progress="0"
+                android:progressDrawable="@drawable/opengl_progressbar"
+                android:thumb="@drawable/opengl_seek_thumb"
+                android:thumbOffset="0dp"
+                android:visibility="visible"/>
+
+            <TextView
+                android:id="@+id/timeEnd"
+                android:layout_width="60dp"
+                android:layout_height="wrap_content"
+                android:layout_marginRight="5dp"
+                android:gravity="center"
+                android:text="10000"
+                android:textColor="@android:color/white"/>
+        </LinearLayout>
+
+        <RelativeLayout
+            android:id="@+id/topBar"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_alignParentTop="true"
+            android:gravity="center_vertical"
+            android:background="#664c4c4c">
+
+            <TextView
+                android:id="@+id/title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="15dp"
+                android:maxWidth="250dp"
+                android:singleLine="true"
+                android:ellipsize="marquee"
+                android:text="xxxx.yuv"
+                android:textColor="@android:color/white"
+                android:textSize="17sp"/>
+
+            <TextView
+                android:id="@+id/btnCodecType"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentRight="true"
+                android:layout_marginRight="20dp"
+                android:text="软解"
+                android:textColor="@android:color/white"
+                android:textSize="17sp"/>
+        </RelativeLayout>
+
+        <ImageView
+            android:id="@+id/btnRotate"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:layout_below="@id/topBar"
+            android:layout_marginTop="20dp"
+            android:layout_marginLeft="5dp"
+            android:src="@drawable/opengl_selector_rotate_button"/>
+
+        <TextView
+            android:id="@+id/textStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:text="原始"
+            android:textColor="@android:color/white"
+            android:textSize="40sp"/>
+
+    </RelativeLayout>
+
+    <ImageView
+        android:id="@+id/loading"
+        android:layout_width="55dp"
+        android:layout_height="55dp"
+        android:layout_centerInParent="true"/>
+
+</RelativeLayout>
