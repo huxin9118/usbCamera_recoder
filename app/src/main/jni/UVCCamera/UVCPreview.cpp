@@ -42,9 +42,9 @@
 #include "libuvc_internal.h"
 
 #define	LOCAL_DEBUG 1
-#define MAX_FRAME 4
+#define MAX_FRAME 5
 #define PREVIEW_PIXEL_BYTES 2	// RGBA/RGBX
-#define FRAME_POOL_SZ MAX_FRAME + 2
+#define FRAME_POOL_SZ MAX_FRAME * 2
 
 UVCPreview::UVCPreview(uvc_device_handle_t *devh)
 :	mPreviewWindow(NULL),
@@ -537,7 +537,7 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 			// MJPEG mode
 			for ( ; LIKELY(isRunning()) ; ) {
 				frame_mjpeg = waitPreviewFrame();
-				if (LIKELY(frame_mjpeg)) {
+				if (LIKELY(frame_mjpeg && isRunning())) {
 					frame = get_frame(frame_mjpeg->width * frame_mjpeg->height * 2);
 					result = uvc_mjpeg2yuyv(frame_mjpeg, frame);   // MJPEG => yuyv
 					recycle_frame(frame_mjpeg);
@@ -553,7 +553,7 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 			// yuvyv mode
 			for ( ; LIKELY(isRunning()) ; ) {
 				frame = waitPreviewFrame();
-				if (LIKELY(frame)) {
+				if (LIKELY(frame && isRunning())) {
 					frame = draw_preview_one(frame, &mPreviewWindow, uvc_any2rgb565, PREVIEW_PIXEL_BYTES);
 					addCaptureFrame(frame);
 				}
@@ -886,7 +886,7 @@ void UVCPreview::do_capture_surface(JNIEnv *env) {
 
 	for (; isRunning() && isCapturing() ;) {
 		frame = waitCaptureFrame();
-		if (LIKELY(frame)) {
+		if (LIKELY(frame && isRunning())) {
 			// frame data is always YUYV format.
 			if LIKELY(isCapturing()) {
 				if (UNLIKELY(!converted)) {
@@ -921,7 +921,7 @@ void UVCPreview::do_capture_surface(JNIEnv *env) {
 void UVCPreview::do_capture_callback(JNIEnv *env, uvc_frame_t *frame) {
 	ENTER();
 
-	if (LIKELY(frame)) {
+	if (LIKELY(frame && isRunning())) {
 		uvc_frame_t *callback_frame = frame;
 		if (mFrameCallbackObj) {
 			if (mFrameCallbackFunc) {
@@ -939,10 +939,12 @@ void UVCPreview::do_capture_callback(JNIEnv *env, uvc_frame_t *frame) {
 					goto SKIP;
 				}
 			}
-			jobject buf = env->NewDirectByteBuffer(callback_frame->data, callbackPixelBytes);
-			env->CallVoidMethod(mFrameCallbackObj, iframecallback_fields.onFrame, buf);
-			env->ExceptionClear();
-			env->DeleteLocalRef(buf);
+			if(iframecallback_fields.onFrame){
+				jobject buf = env->NewDirectByteBuffer(callback_frame->data, callbackPixelBytes);
+				env->CallVoidMethod(mFrameCallbackObj, iframecallback_fields.onFrame, buf);
+				env->ExceptionClear();
+				env->DeleteLocalRef(buf);
+			}
 		}
  SKIP:
 		recycle_frame(callback_frame);

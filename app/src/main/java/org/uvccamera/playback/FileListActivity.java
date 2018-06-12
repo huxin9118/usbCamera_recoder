@@ -47,6 +47,7 @@ import org.uvccamera.utils.FileUtils;
 import org.uvccamera.utils.ImageUtils;
 
 import java.io.File;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -152,7 +153,7 @@ public class FileListActivity extends AppCompatActivity implements ActionMode.Ca
             }
         }
         else {
-            setContentView(R.layout.activity_file_list);
+            setContentView(R.layout.uvc_playback_activity_file_list);
             root = (RelativeLayout) findViewById(R.id.root);
             fab = (FloatingActionButton) findViewById(R.id.floatingActionButton);
             fab.setOnClickListener(new View.OnClickListener() {
@@ -167,14 +168,14 @@ public class FileListActivity extends AppCompatActivity implements ActionMode.Ca
                             Intent getUrlintent = new Intent(Intent.ACTION_GET_CONTENT);
                             getUrlintent.addCategory(Intent.CATEGORY_OPENABLE);
                             getUrlintent.setType("video/*");
-                            startActivityForResult(Intent.createChooser(getUrlintent, "请选择文件管理器"), GET_CONTENT_REQUESTCODE);
+                            startActivityForResult(Intent.createChooser(getUrlintent, getResources().getText(R.string.uvc_select_file_manager)), GET_CONTENT_REQUESTCODE);
                         }
                     }
                     else{
                         Intent getUrlintent = new Intent(Intent.ACTION_GET_CONTENT);
                         getUrlintent.addCategory(Intent.CATEGORY_OPENABLE);
                         getUrlintent.setType("video/*");
-                        startActivityForResult(Intent.createChooser(getUrlintent, "请选择文件管理器"), GET_CONTENT_REQUESTCODE);
+                        startActivityForResult(Intent.createChooser(getUrlintent, getResources().getText(R.string.uvc_select_file_manager)), GET_CONTENT_REQUESTCODE);
                     }
                 }
             });
@@ -200,7 +201,7 @@ public class FileListActivity extends AppCompatActivity implements ActionMode.Ca
             mLayoutManager.setOrientation(OrientationHelper.VERTICAL);
             mRecyclerView.setLayoutManager(mLayoutManager);
             mRecyclerViewAdapter = new FileListActivityRecyclerAdapter(this);
-            mRecyclerViewAdapter.setCreateViewLayout(R.layout.item_recycler_main);
+            mRecyclerViewAdapter.setCreateViewLayout(R.layout.uvc_playback_item_file_list);
 
             mRecyclerViewAdapter.setOnItemClickListener(new OnItemClickListener(){
                 @Override
@@ -220,7 +221,7 @@ public class FileListActivity extends AppCompatActivity implements ActionMode.Ca
                                     String thumbnailPath = mediaInfoList.get(pos).getThumbnailPath();
 
                                     if(!ConstantUtils.isStreamMedia(type) && !new File(input_url).exists()) {
-                                        showToast(input_url+" 该文件已不存在！", Toast.LENGTH_SHORT);
+                                        showToast(input_url+getResources().getText(R.string.uvc_file_unexist).toString(), Toast.LENGTH_SHORT);
                                     } else{
                                         if ("yuv".equals(type)) {
                                             Intent intent = new Intent();
@@ -262,7 +263,7 @@ public class FileListActivity extends AppCompatActivity implements ActionMode.Ca
                                 String thumbnailPath = mediaInfoList.get(pos).getThumbnailPath();
 
                                 if(!ConstantUtils.isStreamMedia(type) && !new File(input_url).exists()) {
-                                    showToast(input_url+" 该文件已不存在！", Toast.LENGTH_SHORT);
+                                    showToast(input_url+getResources().getText(R.string.uvc_file_unexist).toString(), Toast.LENGTH_SHORT);
                                 } else{
                                     if ("yuv".equals(type)) {
                                         Intent intent = new Intent();
@@ -311,7 +312,7 @@ public class FileListActivity extends AppCompatActivity implements ActionMode.Ca
                 }
             });
 
-            initRecyclerViewData();
+            initListViewData();
             mRecyclerView.setAdapter(mRecyclerViewAdapter);
         }
     }
@@ -334,7 +335,8 @@ public class FileListActivity extends AppCompatActivity implements ActionMode.Ca
             actionMode.finish();
         } else {
             // 设置ActionMode标题
-            actionMode.setTitle(mRecyclerViewAdapter.positionSet.size() + " 项已选择");
+            actionMode.setTitle(getResources().getText(R.string.uvc_actionbar_long_click_check).toString()
+                    + mRecyclerViewAdapter.positionSet.size() + getResources().getText(R.string.uvc_actionbar_long_click_check_unit).toString());
             // 更新列表界面，否则无法显示已选的item
             mRecyclerViewAdapter.notifyDataSetChanged();
         }
@@ -344,7 +346,7 @@ public class FileListActivity extends AppCompatActivity implements ActionMode.Ca
     public boolean onCreateActionMode(ActionMode mode, Menu menu) {
         if (actionMode == null) {
             actionMode = mode;
-            getMenuInflater().inflate(R.menu.menu_main_long_click, menu);
+            getMenuInflater().inflate(R.menu.uvc_menu_main_long_click, menu);
             return true;
         } else {
             return false;
@@ -366,12 +368,14 @@ public class FileListActivity extends AppCompatActivity implements ActionMode.Ca
             case R.id.action_select_all:
                 if(!mRecyclerViewAdapter.isSelectAll) {
                     mRecyclerViewAdapter.isSelectAll = true;
-                    actionMode.setTitle("已全选，共 "+mRecyclerViewAdapter.getItemCount() + " 项");
+                    actionMode.setTitle(getResources().getText(R.string.uvc_actionbar_long_click_all_check).toString()
+                            + mRecyclerViewAdapter.positionSet.size() + getResources().getText(R.string.uvc_actionbar_long_click_all_check_unit).toString());
                     mRecyclerViewAdapter.notifyDataSetChanged();
                 }
                 else{
                     mRecyclerViewAdapter.isSelectAll = false;
-                    actionMode.setTitle(mRecyclerViewAdapter.positionSet.size() + " 项已选择");
+                    actionMode.setTitle(getResources().getText(R.string.uvc_actionbar_long_click_check).toString()
+                            + mRecyclerViewAdapter.positionSet.size() + getResources().getText(R.string.uvc_actionbar_long_click_check_unit).toString());
                     mRecyclerViewAdapter.notifyDataSetChanged();
                 }
                 return true;
@@ -388,7 +392,7 @@ public class FileListActivity extends AppCompatActivity implements ActionMode.Ca
         mRecyclerViewAdapter.notifyDataSetChanged();
     }
 
-    void initRecyclerViewData(){
+    void initListViewData(){
 //        UrlService urlService = new UrlService();
 //        mediaInfoList = urlService.getMediaInfoList();
         mediaInfoList = new ArrayList<>();
@@ -397,14 +401,25 @@ public class FileListActivity extends AppCompatActivity implements ActionMode.Ca
             File[] fileList = fileDirectory.listFiles();
             for(int i = 0; i < fileList.length; i++){
                 String input_url = fileList[i].getPath();
-                String type = input_url.substring(input_url.lastIndexOf(".")+1).toLowerCase();
-                long now = new Date().getTime();
+                String type = input_url.substring(input_url.lastIndexOf('.')+1).toLowerCase();
+                long now = fileList[i].lastModified();;
+//                try {
+//                    type = input_url.substring(input_url.lastIndexOf('.')+1).toLowerCase();
+//                    String name = input_url.substring(input_url.lastIndexOf(File.separator)+1 ,input_url.lastIndexOf('.'));
+//                    now = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss").parse(name).getTime();
+//                } catch (ParseException e) {
+//                    e.printStackTrace();
+//                    now = new Date().getTime();
+//                } catch (Exception e){
+//                    Log.i(TAG, "initListViewData: Exception input_url = "+input_url);
+//                    continue;
+//                }
                 if("mp4".equals(type)) {
                     MediaInfo mediaInfo = new MediaInfo();
                     mediaInfo.setUrl(input_url);
                     mediaInfo.setTime(now);
                     mediaInfo.setType(type);
-                    mediaInfoList.add(0, mediaInfo);
+                    mediaInfoList.add(mediaInfo);
                 }
             }
         }
@@ -413,7 +428,7 @@ public class FileListActivity extends AppCompatActivity implements ActionMode.Ca
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.menu_main_normal,menu);
+        getMenuInflater().inflate(R.menu.uvc_menu_main_normal,menu);
         return true;
     }
 
@@ -426,7 +441,7 @@ public class FileListActivity extends AppCompatActivity implements ActionMode.Ca
                     Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
                     intent.addCategory(Intent.CATEGORY_OPENABLE);
                     intent.setType("video/*");
-                    startActivityForResult(Intent.createChooser(intent,"请选择文件管理器"),GET_CONTENT_REQUESTCODE);
+                    startActivityForResult(Intent.createChooser(intent,getResources().getText(R.string.uvc_select_file_manager)),GET_CONTENT_REQUESTCODE);
                 }
         }
     }
@@ -442,7 +457,7 @@ public class FileListActivity extends AppCompatActivity implements ActionMode.Ca
                         input_url = input_url.substring(5);
                     }
 
-                    long now = new Date().getTime();
+                    long now = new File(input_url).lastModified();
 //                    UrlService urlService = new UrlService();
                     String type = input_url.substring(input_url.lastIndexOf(".")+1).toLowerCase();
 
@@ -485,7 +500,7 @@ public class FileListActivity extends AppCompatActivity implements ActionMode.Ca
                     mRecyclerViewAdapter.notifyDataSetChanged();
                     break;
                 case REFRESH_UI:
-                    initRecyclerViewData();
+                    initListViewData();
                     mRecyclerViewAdapter.notifyDataSetChanged();
                     break;
             }
@@ -494,16 +509,16 @@ public class FileListActivity extends AppCompatActivity implements ActionMode.Ca
 
     private void showStreamMediaDialog(){
         builder = new AlertDialog.Builder(this);
-        builder.setTitle("网络流");
+        builder.setTitle(R.string.uvc_dialog_stream_media);
         LayoutInflater layoutInflater = getLayoutInflater();
-        View dialogView = layoutInflater.inflate(R.layout.dialog_stream_media,null);
+        View dialogView = layoutInflater.inflate(R.layout.uvc_playback_dialog_stream_media,null);
         urlText = (EditText) dialogView.findViewById(R.id.urlText);
         final SharedPreferences sp = getSharedPreferences("user", Context.MODE_PRIVATE);
         urlText.setText(sp.getString("stream_media_url",""));
         urlText.setSelection(urlText.getText().toString().length());
         builder.setView(dialogView);
-        builder.setPositiveButton("确定", null);
-        builder.setNegativeButton("取消", new DialogInterface.OnClickListener() {
+        builder.setPositiveButton(R.string.uvc_dialog_stream_media_ok, null);
+        builder.setNegativeButton(R.string.uvc_dialog_stream_media_cancel, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 dialog.dismiss();
@@ -560,14 +575,14 @@ public class FileListActivity extends AppCompatActivity implements ActionMode.Ca
                         dialog.dismiss();
                     }
                     else{
-                        showToast("请输入正确的URL", Toast.LENGTH_SHORT);
+                        showToast(getResources().getText(R.string.uvc_dialog_stream_media_error).toString(), Toast.LENGTH_SHORT);
                         urlText.setText("");
                         urlText.setSelection(urlText.getText().toString().length());
                     }
                 }
                 catch (Exception e){
                     e.printStackTrace();
-                    showToast("请输入正确的URL", Toast.LENGTH_SHORT);
+                    showToast(getResources().getText(R.string.uvc_dialog_stream_media_error).toString(), Toast.LENGTH_SHORT);
                     urlText.setText("");
                     urlText.setSelection(urlText.getText().toString().length());
                 }
@@ -581,9 +596,10 @@ public class FileListActivity extends AppCompatActivity implements ActionMode.Ca
         Log.i(TAG, "showCodecTypeDialog: codec_type = "+codec_type);
 
         builder = new AlertDialog.Builder(this);
-        builder.setTitle("解码器");
+        builder.setTitle(R.string.uvc_dialog_codec_type);
 
-        final String[] codec_type_items = new String[]{"软件解码器","硬件解码器"};
+        final String[] codec_type_items = new String[]{getResources().getText(R.string.uvc_dialog_codec_type_soft).toString(),
+                                                        getResources().getText(R.string.uvc_dialog_codec_type_hard).toString()};
 
         builder.setSingleChoiceItems(codec_type_items, codec_type, new DialogInterface.OnClickListener() {
             @Override
@@ -593,7 +609,7 @@ public class FileListActivity extends AppCompatActivity implements ActionMode.Ca
             }
         });
 
-        builder.setPositiveButton("确定", new DialogInterface.OnClickListener() {
+        builder.setPositiveButton(R.string.uvc_dialog_codec_type_ok, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 if(checked_codec_type_item != -1){
@@ -605,7 +621,7 @@ public class FileListActivity extends AppCompatActivity implements ActionMode.Ca
                 }
             }
         });
-        builder.setNegativeButton("取消", new DialogInterface.OnClickListener() {
+        builder.setNegativeButton(R.string.uvc_dialog_codec_type_cancel, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 dialog.dismiss();
@@ -619,9 +635,9 @@ public class FileListActivity extends AppCompatActivity implements ActionMode.Ca
 
     private void showDeleteDialog(final ActionMode mode){
         builder = new AlertDialog.Builder(this);
-        builder.setTitle("删除");
+        builder.setTitle(R.string.uvc_dialog_delete);
         LayoutInflater layoutInflater = getLayoutInflater();
-        View dialogView = layoutInflater.inflate(R.layout.dialog_delete,null);
+        View dialogView = layoutInflater.inflate(R.layout.uvc_playback_dialog_delete,null);
         deleteText = (TextView) dialogView.findViewById(R.id.deleteText);
         String text = "";
         if(mRecyclerViewAdapter.isSelectAll){
@@ -648,13 +664,13 @@ public class FileListActivity extends AppCompatActivity implements ActionMode.Ca
         }
         deleteText.setText(text);
         builder.setView(dialogView);
-        builder.setPositiveButton("删除", new DialogInterface.OnClickListener() {
+        builder.setPositiveButton(R.string.uvc_dialog_delete_delete, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
 //                UrlService urlService = new UrlService();
                 if(mRecyclerViewAdapter.isSelectAll){
                     for(int i = 0;i < mediaInfoList.size();i++) {
-                        mediaInfoList.remove(i);
+                        mediaInfoList.set(i,null);
 //                        urlService.removeUrl(mediaInfoList.get(i).getUrl());
                     }
                 }
@@ -662,20 +678,25 @@ public class FileListActivity extends AppCompatActivity implements ActionMode.Ca
                     Iterator iterator = mRecyclerViewAdapter.positionSet.iterator();
                     while (iterator.hasNext()) {
                         int pos = (int) iterator.next();
-                        mediaInfoList.remove(pos);
+                        mediaInfoList.set(pos,null);
 //                        urlService.removeUrl(mediaInfoList.get(pos).getUrl());
                     }
+                }
+                int deleteIndex = mediaInfoList.indexOf(null);
+                while (deleteIndex != -1) {
+                    mediaInfoList.remove(deleteIndex);
+                    deleteIndex = mediaInfoList.indexOf(null);
                 }
                 mode.finish();
             }
         });
-        builder.setNegativeButton("取消", new DialogInterface.OnClickListener() {
+        builder.setNegativeButton(R.string.uvc_dialog_delete_cancel, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 dialog.dismiss();
             }
         });
-        builder.setNeutralButton("删除（含原文件）",new DialogInterface.OnClickListener() {
+        builder.setNeutralButton(R.string.uvc_dialog_delete_delete_origin,new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
 //                UrlService urlService = new UrlService();
@@ -685,7 +706,7 @@ public class FileListActivity extends AppCompatActivity implements ActionMode.Ca
                             File file = new File(mediaInfoList.get(i).getUrl());
                             file.delete();
                         }
-                        mediaInfoList.remove(i);
+                        mediaInfoList.set(i,null);
 //                        urlService.removeUrl(mediaInfoList.get(i).getUrl());
                     }
                 }
@@ -697,9 +718,14 @@ public class FileListActivity extends AppCompatActivity implements ActionMode.Ca
                             File file = new File(mediaInfoList.get(pos).getUrl());
                             file.delete();
                         }
-                        mediaInfoList.remove(pos);
+                        mediaInfoList.set(pos,null);
 //                        urlService.removeUrl(mediaInfoList.get(pos).getUrl());
                     }
+                }
+                int deleteIndex = mediaInfoList.indexOf(null);
+                while (deleteIndex != -1) {
+                    mediaInfoList.remove(deleteIndex);
+                    deleteIndex = mediaInfoList.indexOf(null);
                 }
                 mode.finish();
             }
@@ -781,7 +807,7 @@ class FileListActivityRecyclerAdapter extends BaseRecyclerViewAdapter {
             holder.type.setText(type.toUpperCase());
             holder.type_copy.setText(type.toUpperCase());
             if (!ConstantUtils.isStreamMedia(type)) {
-                holder.url.setText(url.substring(url.lastIndexOf("/") + 1));
+                holder.url.setText(url.substring(url.lastIndexOf(File.separator) + 1));
                 File file = new File(url);
                 holder.length.setText(FileUtils.getDataSize(file.length()));
             } else {

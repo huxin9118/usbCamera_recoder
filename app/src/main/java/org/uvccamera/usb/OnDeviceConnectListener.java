@@ -37,4 +37,6 @@ public interface OnDeviceConnectListener {
     public void onStartPreview();
 
     public void onStopPreview();
+
+    public void onFirstReceiver();
 }

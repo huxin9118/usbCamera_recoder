@@ -1,8 +1,5 @@
 package org.mediacodec;
 
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import org.mediacodec.utils.H264Utils;
@@ -76,7 +73,7 @@ public class HH264Encoder extends H264Encoder {
 	 */
 	private byte[] startCode = { 0x00, 0x00, 0x00, 0x01 };
 
-	 private FileOutputStream outfile;
+//	 private FileOutputStream outfile;
 
 	/**
 	 * 构造方法
@@ -126,11 +123,11 @@ public class HH264Encoder extends H264Encoder {
 			Log.d(TAG, "encoder open colorFormat " + colorFormat);
 		}
 
-		try {
-			outfile = new FileOutputStream("sdcard/NV12.h264");
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		}
+//		try {
+//			outfile = new FileOutputStream("sdcard/NV12.h264");
+//		} catch (FileNotFoundException e) {
+//			e.printStackTrace();
+//		}
 
 		open = true;
 	}
@@ -157,14 +154,14 @@ public class HH264Encoder extends H264Encoder {
 			Log.d(TAG, "encoder close");
 		}
 
-		if(outfile != null){
-			try {
-				outfile.close();
-			}catch (IOException e) {
-				e.printStackTrace();
-			}
-			outfile = null;
-		}
+//		if(outfile != null){
+//			try {
+//				outfile.close();
+//			}catch (IOException e) {
+//				e.printStackTrace();
+//			}
+//			outfile = null;
+//		}
 	}
 
 	/**
@@ -358,13 +355,13 @@ public class HH264Encoder extends H264Encoder {
 						pos += spsPpslength;
 					}
 
-					if(outfile != null){
-						try {
-							outfile.write(out,0,pos);
-						} catch (IOException e) {
-							e.printStackTrace();
-						}
-					}
+//					if(outfile != null){
+//						try {
+//							outfile.write(out,0,pos);
+//						} catch (IOException e) {
+//							e.printStackTrace();
+//						}
+//					}
 				}
 			}
 		} catch (Throwable t) {

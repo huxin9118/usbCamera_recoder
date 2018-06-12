@@ -1,6 +1,14 @@
 <resources>
     <string name="app_name">usbCamera</string>
 
+    <string name="uvc_not_connect">该终端未连接UVCCamera</string>
+
+    <string name="uvc_recode_success">录像成功，保存在路径[</string>
+    <string name="uvc_recode_success_unit">]</string>
+    <string name="uvc_diconnect">USB驱动获取失败。请链接稳定！</string>
+
+    <string name="uvc_dialog_resolution">请选择分辨率"</string>
+
     <string name="uvc_dialog_setting_title">摄像头参数</string>
     <string name="uvc_dialog_setting_reset">还原</string>
     <string name="uvc_auto_focus">自动对焦</string>
@@ -17,4 +25,25 @@
     <string name="uvc_gamma">伽马</string>
     <string name="uvc_backlight">背光补偿</string>
     <string name="uvc_gain">信号增益</string>
+
+    <string name="uvc_actionbar">播放列表</string>
+    <string name="uvc_actionbar_long_click_check"></string>
+    <string name="uvc_actionbar_long_click_check_unit"> 项已选择</string>
+    <string name="uvc_actionbar_long_click_all_check">已全选，共 </string>
+    <string name="uvc_actionbar_long_click_all_check_unit"> 项</string>
+    <string name="uvc_select_file_manager">请选择文件管理器</string>
+    <string name="uvc_file_unexist">该文件已不存在！</string>
+    <string name="uvc_dialog_stream_media">网络流</string>
+    <string name="uvc_dialog_stream_media_ok">确认</string>
+    <string name="uvc_dialog_stream_media_cancel">取消</string>
+    <string name="uvc_dialog_stream_media_error">请输入正确的URL</string>
+    <string name="uvc_dialog_codec_type">解码器</string>
+    <string name="uvc_dialog_codec_type_soft">软件解码器</string>
+    <string name="uvc_dialog_codec_type_hard">硬件解码器</string>
+    <string name="uvc_dialog_codec_type_ok">确认</string>
+    <string name="uvc_dialog_codec_type_cancel">取消</string>
+    <string name="uvc_dialog_delete">删除</string>
+    <string name="uvc_dialog_delete_delete">删除</string>
+    <string name="uvc_dialog_delete_cancel">取消</string>
+    <string name="uvc_dialog_delete_delete_origin">删除（含原文件）</string>
 </resources>

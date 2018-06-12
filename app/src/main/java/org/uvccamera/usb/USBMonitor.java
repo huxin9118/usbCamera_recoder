@@ -45,8 +45,10 @@ import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 public final class USBMonitor {
 	private static final String TAG = "Debug_USBMonitor";
@@ -54,17 +56,30 @@ public final class USBMonitor {
 	private static final String ACTION_USB_PERMISSION_BASE = "org.uvccamera.USB_PERMISSION";
 	private final String ACTION_USB_PERMISSION = ACTION_USB_PERMISSION_BASE + "." + hashCode();
 
+	private static final int DEVICE_STATE_ATTACH = 0;
+	private static final int DEVICE_STATE_DETHCH = 1;
+	private static final int DEVICE_STATE_CONNECT = 2;
+	private static final int DEVICE_STATE_DISCONNECT = 3;
+	private static final int DEVICE_STATE_CANCEL = 4;
+	private static final int DEVICE_STATE_START_PREVIEW = 5;
+	private static final int DEVICE_STATE_STOP_PREVIEW = 6;
+	private static final int DEVICE_FIRST_RECEIVER = 7;
+
 	private UsbManager mUsbManager = null;
 	private WeakReference<Context> mWeakContext = null;
 	private PendingIntent mPermissionIntent = null;
 	private UsbDevice device = null;
-	private Boolean usbCameraConnect = false;
+	private boolean usbCameraConnect = false;
 	private UsbControlBlock controlBlock = null;
 	private UVCCamera mUVCCamera = null;
+	private IFrameCallback frameCallback = null;
 	private SurfaceHolder surfaceHolder = null;
 	private boolean isCapture = false;
-	private OnDeviceConnectListener mOnDeviceConnectListener;
+	private Set<OnDeviceConnectListener> onDeviceConnectListenerSet;
 	private List<UsbFrameSize> mSupportedSizeList = null;
+	private boolean isRegister;
+
+	private boolean isLock;
 
 	private boolean isAutoFocus;
 	private boolean isFocus;
@@ -91,49 +106,92 @@ public final class USBMonitor {
 	public USBMonitor(final Context context) {
 		mWeakContext = new WeakReference<Context>(context);
 		mUsbManager = (UsbManager)context.getSystemService(Context.USB_SERVICE);
+		onDeviceConnectListenerSet = new HashSet<>();
 	}
 
-	public void register() {
-		final IntentFilter filter = new IntentFilter(ACTION_USB_PERMISSION);
-		// ACTION_USB_DEVICE_ATTACHED never comes on some devices so it should not be added here
-		filter.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED);
-		filter.addAction(UsbManager.ACTION_USB_ACCESSORY_ATTACHED);
-		filter.addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED);
-		filter.addAction(UsbManager.ACTION_USB_ACCESSORY_DETACHED);
+	public synchronized void register() {
+		if(!isRegister) {
+			final IntentFilter filter = new IntentFilter(ACTION_USB_PERMISSION);
+			// ACTION_USB_DEVICE_ATTACHED never comes on some devices so it should not be added here
+			filter.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED);
+			filter.addAction(UsbManager.ACTION_USB_ACCESSORY_ATTACHED);
+			filter.addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED);
+			filter.addAction(UsbManager.ACTION_USB_ACCESSORY_DETACHED);
 
-		if (mWeakContext.get() != null && mUsbReceiver != null){
-			mWeakContext.get().registerReceiver(mUsbReceiver, filter);
-			mPermissionIntent = PendingIntent.getBroadcast(mWeakContext.get(), 0, new Intent(ACTION_USB_PERMISSION), 0);
+			if (mWeakContext.get() != null && mUsbReceiver != null) {
+				mWeakContext.get().registerReceiver(mUsbReceiver, filter);
+				mPermissionIntent = PendingIntent.getBroadcast(mWeakContext.get(), 0, new Intent(ACTION_USB_PERMISSION), 0);
+				isRegister = true;
+			}
 		}
 	}
 
-	public void unregister(){
-		if (mWeakContext.get() != null && mUsbReceiver != null) {
-			mWeakContext.get().unregisterReceiver(mUsbReceiver);
+	public synchronized void unregister(){
+		if(isRegister) {
+			if (mWeakContext.get() != null && mUsbReceiver != null) {
+				mWeakContext.get().unregisterReceiver(mUsbReceiver);
+				isRegister = false;
+			}
 		}
 	}
 
-	public void initCheckUVCState(){
+	private void notifyOnDeviceConnectListener(int state){
+		for(OnDeviceConnectListener listener : onDeviceConnectListenerSet) {
+			switch (state) {
+				case DEVICE_STATE_ATTACH:
+					listener.onAttach(device);
+					break;
+				case DEVICE_STATE_DETHCH:
+					listener.onDettach(device);
+					break;
+				case DEVICE_STATE_CONNECT:
+					listener.onConnect(device, controlBlock);
+					break;
+				case DEVICE_STATE_DISCONNECT:
+					listener.onDisconnect(device, controlBlock);
+					break;
+				case DEVICE_STATE_CANCEL:
+					listener.onCancel(device);
+					break;
+				case DEVICE_STATE_START_PREVIEW:
+					listener.onStartPreview();
+					break;
+				case DEVICE_STATE_STOP_PREVIEW:
+					listener.onStopPreview();
+					break;
+				case DEVICE_FIRST_RECEIVER:
+					listener.onFirstReceiver();
+					break;
+			}
+		}
+	}
+
+	public void initCheckUVCState(OnDeviceConnectListener listener){
 		HashMap<String,UsbDevice> usbDeviceList = mUsbManager.getDeviceList();
 		if(usbDeviceList != null) {
-			Iterator<UsbDevice> usbDevices = usbDeviceList.values().iterator();
-			while(usbDevices.hasNext()){
-				device = usbDevices.next();
-				if((device != null)) {
-					if(device.getDeviceClass() == 239 && device.getDeviceSubclass() == 2) {
-						if(!mUsbManager.hasPermission(device)) {
-							mUsbManager.requestPermission(device, mPermissionIntent);
-						}
-						else {
-							if(!getUsbCameraConnect()) {
+			synchronized (this) {
+				Iterator<UsbDevice> usbDevices = usbDeviceList.values().iterator();
+				while (usbDevices.hasNext()) {
+					device = usbDevices.next();
+					if ((device != null)) {
+						if (device.getDeviceClass() == 239 && device.getDeviceSubclass() == 2) {
+							if (!mUsbManager.hasPermission(device)) {
+								mUsbManager.requestPermission(device, mPermissionIntent);
+								if (listener != null) {
+									listener.onAttach(device);
+								}
+							} else {
 								try {
 									controlBlock = new UsbControlBlock(USBMonitor.this, device);
 									connectCamera(controlBlock);
-									mOnDeviceConnectListener.onConnect(device, controlBlock);
-								}
-								catch (Exception e){
+									if (listener != null) {
+										listener.onConnect(device, controlBlock);
+									}
+								} catch (Exception e) {
 									e.printStackTrace();
-									mOnDeviceConnectListener.onDisconnect(device, controlBlock);
+									if (listener != null) {
+										listener.onDisconnect(device, controlBlock);
+									}
 								}
 							}
 						}
@@ -146,7 +204,7 @@ public final class USBMonitor {
 	public void startCapture(int width, int height, int rotate) {
 		Log.i(TAG, "startCapture");
 		if(device != null && mUVCCamera != null && surfaceHolder != null && getUsbCameraConnect()  && !isCapture()) {
-			mOnDeviceConnectListener.onStartPreview();
+			notifyOnDeviceConnectListener(DEVICE_STATE_START_PREVIEW);
 
 			if(!TextUtils.isEmpty(mUVCCamera.mSupportedSize)) {
 				Log.i(TAG, "supportedSize:" + mUVCCamera.mSupportedSize);
@@ -209,8 +267,7 @@ public final class USBMonitor {
 //					e.printStackTrace();
 //				}
 //			}
-
-			mOnDeviceConnectListener.onStopPreview();
+			notifyOnDeviceConnectListener(DEVICE_STATE_STOP_PREVIEW);
 		}
 	}
 
@@ -254,31 +311,6 @@ public final class USBMonitor {
 		}
 	};
 
-	private final IFrameCallback frameCallback = new IFrameCallback() {
-		@Override
-		public void onFrame(ByteBuffer frame) {
-//			Log.e(TAG, "receive the ["+index+"] frame!");
-//			if(outputStream != null) {
-//				try {
-//					byte[] byteFrame = new byte[frame.remaining()];
-//					frame.get(byteFrame, 0, byteFrame.length);
-//
-//					outputStream.write(byteFrame);
-//				} catch (Exception e) {
-//					e.printStackTrace();
-//					Log.e(TAG, " fileChannel write error");
-//				}
-//				index ++;
-//			}
-
-			if(mEncoder != null && mEncoder.isOpen()) {
-				byte[] byteFrame = new byte[frame.remaining()];
-				frame.get(byteFrame, 0, byteFrame.length);
-				mEncoder.encode(byteFrame, 0, new byte[1920*1080*3/2], byteFrame.length);
-			}
-		}
-	};
-
 	private final BroadcastReceiver mUsbReceiver = new BroadcastReceiver() {
 		@Override
 		public void onReceive(final Context context, final Intent intent) {
@@ -286,18 +318,17 @@ public final class USBMonitor {
 			if (ACTION_USB_PERMISSION.equals(action)) {
 				// when received the result of requesting USB permission
 				synchronized (this) {
+					notifyOnDeviceConnectListener(DEVICE_FIRST_RECEIVER);
 					device = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
 					if (device != null && intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)) {
-						if(!getUsbCameraConnect()) {
-							try {
-								controlBlock = new UsbControlBlock(USBMonitor.this, device);
-								connectCamera(controlBlock);
-								mOnDeviceConnectListener.onConnect(device, controlBlock);
-							}
-							catch (Exception e){
-								e.printStackTrace();
-								mOnDeviceConnectListener.onDisconnect(device, controlBlock);
-							}
+						try {
+							controlBlock = new UsbControlBlock(USBMonitor.this, device);
+							connectCamera(controlBlock);
+							notifyOnDeviceConnectListener(DEVICE_STATE_CONNECT);
+						}
+						catch (Exception e){
+							e.printStackTrace();
+							notifyOnDeviceConnectListener(DEVICE_STATE_DISCONNECT);
 						}
 					}
 				}
@@ -308,12 +339,17 @@ public final class USBMonitor {
 						if (device.getDeviceClass() == 239 && device.getDeviceSubclass() == 2) {
 							if(!mUsbManager.hasPermission(device)) {
 								mUsbManager.requestPermission(device, mPermissionIntent);
-								mOnDeviceConnectListener.onAttach(device);
+								notifyOnDeviceConnectListener(DEVICE_STATE_ATTACH);
 							}
 							else {
-								if(!getUsbCameraConnect()) {
+								try {
 									controlBlock = new UsbControlBlock(USBMonitor.this, device);
 									connectCamera(controlBlock);
+									notifyOnDeviceConnectListener(DEVICE_STATE_CONNECT);
+								}
+								catch (Exception e){
+									e.printStackTrace();
+									notifyOnDeviceConnectListener(DEVICE_STATE_DISCONNECT);
 								}
 							}
 						}
@@ -326,7 +362,7 @@ public final class USBMonitor {
 						stopRecoder();
 						stopCapture();
 						releaseCamera();
-						mOnDeviceConnectListener.onDettach(device);
+						notifyOnDeviceConnectListener(DEVICE_STATE_DETHCH);
 					}
 				}
 			}
@@ -362,10 +398,7 @@ public final class USBMonitor {
 
 				}catch (final Exception e){
 					e.printStackTrace();
-				}
-				finally {
 					setUsbCameraConnect(false);
-					mUVCCamera = null;
 				}
 			}
 			mUVCCamera = new UVCCamera();
@@ -436,11 +469,11 @@ public final class USBMonitor {
 		}
 	}
 
-	public Boolean getUsbCameraConnect() {
+	public boolean getUsbCameraConnect() {
 		return usbCameraConnect;
 	}
 
-	public void setUsbCameraConnect(Boolean usbCameraConnect) {
+	private void setUsbCameraConnect(boolean usbCameraConnect) {
 		this.usbCameraConnect = usbCameraConnect;
 	}
 
@@ -452,8 +485,28 @@ public final class USBMonitor {
 		this.surfaceHolder = surfaceHolder;
 	}
 
-	public void setOnDeviceConnectListener(OnDeviceConnectListener onDeviceConnectListener) {
-		this.mOnDeviceConnectListener = onDeviceConnectListener;
+	public void addOnDeviceConnectListener(OnDeviceConnectListener onDeviceConnectListener) {
+		this.onDeviceConnectListenerSet.add(onDeviceConnectListener);
+	}
+
+	public void removeOnDeviceConnectListener(OnDeviceConnectListener onDeviceConnectListener) {
+		this.onDeviceConnectListenerSet.remove(onDeviceConnectListener);
+	}
+
+	public int getOnDeviceConnectListenerSize() {
+		return this.onDeviceConnectListenerSet.size();
+	}
+
+	public boolean isLock() {
+		return isLock;
+	}
+
+	public void setLock(boolean lock) {
+		isLock = lock;
+	}
+
+	public void setIFrameCallback(IFrameCallback frameCallback) {
+		this.frameCallback = frameCallback;
 	}
 
 	public List<UsbFrameSize> getSupportedSizeList() {
@@ -466,6 +519,10 @@ public final class USBMonitor {
 
 	public UVCCamera getUVCCamera() {
 		return mUVCCamera;
+	}
+
+	public MPEG4Encoder getEncoder() {
+		return mEncoder;
 	}
 
 	public boolean isAutoFocus() {
