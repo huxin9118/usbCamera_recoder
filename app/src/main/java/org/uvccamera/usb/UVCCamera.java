@@ -21,12 +21,6 @@ package org.uvccamera.usb;
  *  Files in the libjpeg-turbo, libusb, libuvc, rapidjson folder
  *  may have a different license, see the respective files.
  */
-import java.util.ArrayList;
-import java.util.List;
-
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
 
 import android.graphics.SurfaceTexture;
 import android.hardware.usb.UsbDevice;
@@ -321,6 +315,21 @@ public class UVCCamera {
      */
     public synchronized void setPreviewDisplay(final SurfaceHolder holder, final int rotate) {
    		nativeSetPreviewDisplay(mNativePtr, holder.getSurface(), rotate);
+//		Log.i(TAG, "setPreviewDisplay: surfaceHolder.getSurface():"+holder.getSurface());
+//		int result;
+//		do {
+//			result = nativeSetPreviewDisplay(mNativePtr, holder.getSurface(),rotate);
+//			if (result != 0) {
+//				Log.e(TAG, "nativeSetPreviewDisplay failed!");
+//
+//			}
+//			try {
+//				Thread.sleep(50);
+//			} catch (InterruptedException e) {
+//				e.printStackTrace();
+//			}
+//		}
+//		while(result != 0);
     }
 
     /**

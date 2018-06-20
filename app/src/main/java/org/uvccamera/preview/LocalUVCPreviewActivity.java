@@ -43,6 +43,7 @@ import android.widget.Toast;
 
 import org.uvccamera.R;
 import org.uvccamera.playback.FileListActivity;
+import org.uvccamera.usb.IFrameCallback;
 import org.uvccamera.usb.OnDeviceConnectListener;
 import org.uvccamera.usb.USBMonitor;
 import org.uvccamera.usb.UsbControlBlock;
@@ -56,6 +57,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
+import java.nio.ByteBuffer;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
@@ -75,7 +77,9 @@ public class LocalUVCPreviewActivity extends Activity{
     private SurfaceView cameraSurfaceView;
     private USBMonitor usbMonitor;
     private OnDeviceConnectListener usbDeviceConnectListener;
+    private IFrameCallback frameCallback;
 
+    private LinearLayout lytop;
     private Switch btnCapture;
     private TextView textStatus;
 
@@ -124,7 +128,7 @@ public class LocalUVCPreviewActivity extends Activity{
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_local_uvc_preview);
+        setContentView(R.layout.uvc_playback_activity_local_uvc_preview);
 
         File uvc_file = new File(DEFAILT_LOCAL_UVC);
         if(!uvc_file.exists()){
@@ -146,6 +150,7 @@ public class LocalUVCPreviewActivity extends Activity{
             public void onCheckedChanged(CompoundButton compoundButton, boolean isCheck) {
                 if (isCheck && usbMonitor != null) {
                     usbMonitor.setSurfaceHolder(cameraSurfaceView.getHolder());
+                    usbMonitor.setIFrameCallback(frameCallback);
                     usbMonitor.startCapture(capture_width, capture_height, capture_rotate);
                     updateSurfaceViewSzie(capture_width, capture_height, capture_rotate);
                 } else {
@@ -153,6 +158,8 @@ public class LocalUVCPreviewActivity extends Activity{
                 }
             }
         });
+
+        lytop = (LinearLayout)  findViewById(R.id.lytop);
 
         btnRotate = (LinearLayout) findViewById(R.id.btnRotate);
         textRotate = (TextView) findViewById(R.id.textRotate);
@@ -179,6 +186,7 @@ public class LocalUVCPreviewActivity extends Activity{
                 if(btnCapture.isChecked() && usbMonitor != null){
                     usbMonitor.stopCapture();
                     usbMonitor.setSurfaceHolder(cameraSurfaceView.getHolder());
+                    usbMonitor.setIFrameCallback(frameCallback);
                     usbMonitor.startCapture(capture_width, capture_height, capture_rotate);
                     updateSurfaceViewSzie(capture_width, capture_height, capture_rotate);
                 }
@@ -197,8 +205,8 @@ public class LocalUVCPreviewActivity extends Activity{
         textStatus.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if(usbMonitor != null) {
-                    usbMonitor.initCheckUVCState();
+                if(usbMonitor != null && !usbMonitor.getUsbCameraConnect()) {
+                    usbMonitor.initCheckUVCState(usbDeviceConnectListener);
                 }
             }
         });
@@ -247,6 +255,7 @@ public class LocalUVCPreviewActivity extends Activity{
                     Log.i(TAG, "开启录像");
                     isRecording = true;
                     btnShoot.setImageResource(R.drawable.uvc_preview_selector_record_shoot_end);
+                    lytop.setVisibility(View.INVISIBLE);
                     lyPreview.setVisibility(View.INVISIBLE);
                     lySetting.setVisibility(View.INVISIBLE);
                     bottomBar.setBackgroundColor(Color.parseColor("#00000000"));
@@ -259,6 +268,7 @@ public class LocalUVCPreviewActivity extends Activity{
                     Log.i(TAG, "停止录像");
                     isRecording = false;
                     btnShoot.setImageResource(R.drawable.uvc_preview_selector_record_shoot_start);
+                    lytop.setVisibility(View.VISIBLE);
                     lyPreview.setVisibility(View.VISIBLE);
                     lySetting.setVisibility(View.VISIBLE);
                     bottomBar.setBackgroundColor(Color.parseColor("#664c4c4c"));
@@ -269,7 +279,8 @@ public class LocalUVCPreviewActivity extends Activity{
                         new DownLoadThumbnailTask(new WeakReference(LocalUVCPreviewActivity.this), thumbnailImage).execute();
                     }
                     usbMonitor.stopRecoder();
-                    Toast.makeText(LocalUVCPreviewActivity.this,"录像成功，保存在路径["+outputPath+"]",Toast.LENGTH_LONG).show();
+                    Toast.makeText(LocalUVCPreviewActivity.this,getResources().getText(R.string.uvc_recode_success).toString()
+                            +outputPath+getResources().getText(R.string.uvc_recode_success_unit).toString(),Toast.LENGTH_LONG).show();
                 }
             }
         });
@@ -386,7 +397,7 @@ public class LocalUVCPreviewActivity extends Activity{
             }
             @Override
             public void onDisconnect(UsbDevice device, UsbControlBlock ctrlBlock) {
-                Toast.makeText(LocalUVCPreviewActivity.this,"USB驱动获取失败。请检查链接是否稳定！",Toast.LENGTH_SHORT).show();
+                Toast.makeText(LocalUVCPreviewActivity.this,R.string.uvc_diconnect,Toast.LENGTH_SHORT).show();
             }
             @Override
             public void onCancel(UsbDevice device) {}
@@ -410,6 +421,20 @@ public class LocalUVCPreviewActivity extends Activity{
                 btnSetting.setEnabled(false);
                 btnShoot.setEnabled(false);
             }
+
+            @Override
+            public void onFirstReceiver() {}
+        };
+
+        frameCallback = new IFrameCallback() {
+            @Override
+            public void onFrame(ByteBuffer frame) {
+                if(usbMonitor != null && usbMonitor.getEncoder() != null && usbMonitor.getEncoder().isOpen()) {
+                    byte[] byteFrame = new byte[frame.remaining()];
+                    frame.get(byteFrame, 0, byteFrame.length);
+                    usbMonitor.getEncoder().encode(byteFrame, 0, new byte[1920*1080*3/2], byteFrame.length);
+                }
+            }
         };
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -419,15 +444,15 @@ public class LocalUVCPreviewActivity extends Activity{
             else{
                 usbMonitor = new USBMonitor(this);
                 usbMonitor.register();
-                usbMonitor.setOnDeviceConnectListener(usbDeviceConnectListener);
-                usbMonitor.initCheckUVCState();
+                usbMonitor.addOnDeviceConnectListener(usbDeviceConnectListener);
+                usbMonitor.initCheckUVCState(usbDeviceConnectListener);
             }
         }
         else{
             usbMonitor = new USBMonitor(this);
             usbMonitor.register();
-            usbMonitor.setOnDeviceConnectListener(usbDeviceConnectListener);
-            usbMonitor.initCheckUVCState();
+            usbMonitor.addOnDeviceConnectListener(usbDeviceConnectListener);
+            usbMonitor.initCheckUVCState(usbDeviceConnectListener);
         }
     }
 
@@ -439,8 +464,8 @@ public class LocalUVCPreviewActivity extends Activity{
                         && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     usbMonitor = new USBMonitor(this);
                     usbMonitor.register();
-                    usbMonitor.setOnDeviceConnectListener(usbDeviceConnectListener);
-                    usbMonitor.initCheckUVCState();
+                    usbMonitor.addOnDeviceConnectListener(usbDeviceConnectListener);
+                    usbMonitor.initCheckUVCState(usbDeviceConnectListener);
                 }
                 break;
         }
@@ -454,6 +479,7 @@ public class LocalUVCPreviewActivity extends Activity{
                 @Override
                 public void run() {
                     usbMonitor.setSurfaceHolder(cameraSurfaceView.getHolder());
+                    usbMonitor.setIFrameCallback(frameCallback);
                     usbMonitor.startCapture(capture_width, capture_height, capture_rotate);
                     updateSurfaceViewSzie(capture_width, capture_height, capture_rotate);
                 }
@@ -485,6 +511,7 @@ public class LocalUVCPreviewActivity extends Activity{
             usbMonitor.stopCapture();
             usbMonitor.releaseCamera();
             usbMonitor.unregister();
+            usbMonitor.removeOnDeviceConnectListener(usbDeviceConnectListener);
         }
         super.onDestroy();
     }
@@ -592,7 +619,7 @@ public class LocalUVCPreviewActivity extends Activity{
 
     private void showResolutionDialog(){
         builder = new AlertDialog.Builder(this,R.style.NoBackDialog);
-        builder.setTitle("请选择分辨率");
+        builder.setTitle(R.string.uvc_dialog_resolution);
 
         final List<UsbFrameSize> usbFrameSizeList = usbMonitor.getSupportedSizeList();
         String[] usbFrameSizeStringList;
@@ -620,6 +647,7 @@ public class LocalUVCPreviewActivity extends Activity{
                 if(btnCapture.isChecked() && usbMonitor != null){
                     usbMonitor.stopCapture();
                     usbMonitor.setSurfaceHolder(cameraSurfaceView.getHolder());
+                    usbMonitor.setIFrameCallback(frameCallback);
                     usbMonitor.startCapture(capture_width, capture_height, capture_rotate);
                     updateSurfaceViewSzie(capture_width, capture_height, capture_rotate);
                 }

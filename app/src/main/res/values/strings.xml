@@ -1,6 +1,14 @@
 <resources>
     <string name="app_name">usbCamera</string>
 
+    <string name="uvc_not_connect">this terminal do not connect UVCCamera</string>
+
+    <string name="uvc_recode_success">Recode success, and saved file in path [</string>
+    <string name="uvc_recode_success_unit">]</string>
+    <string name="uvc_diconnect">Filed to get USB device, and Please make sure the stable connection</string>
+
+    <string name="uvc_dialog_resolution">Please check resolution!"</string>
+
     <string name="uvc_dialog_setting_title">Camera Parameter</string>
     <string name="uvc_dialog_setting_reset">Reset</string>
     <string name="uvc_auto_focus">Auto Focus</string>
@@ -17,4 +25,25 @@
     <string name="uvc_gamma">Gamma</string>
     <string name="uvc_backlight">Backlight</string>
     <string name="uvc_gain">Gain</string>
+
+    <string name="uvc_actionbar">Play List</string>
+    <string name="uvc_actionbar_long_click_check">Check </string>
+    <string name="uvc_actionbar_long_click_check_unit"> items</string>
+    <string name="uvc_actionbar_long_click_all_check">Check all, </string>
+    <string name="uvc_actionbar_long_click_all_check_unit"> items totally</string>
+    <string name="uvc_select_file_manager">Please select file manager</string>
+    <string name="uvc_file_unexist">The file is not exist!</string>
+    <string name="uvc_dialog_stream_media">Stream Media</string>
+    <string name="uvc_dialog_stream_media_ok">OK</string>
+    <string name="uvc_dialog_stream_media_cancel">CANCEL</string>
+    <string name="uvc_dialog_stream_media_error">Please input correct URL</string>
+    <string name="uvc_dialog_codec_type">Decoder</string>
+    <string name="uvc_dialog_codec_type_soft">Soft Decoder</string>
+    <string name="uvc_dialog_codec_type_hard">hard Decoder</string>
+    <string name="uvc_dialog_codec_type_ok">OK</string>
+    <string name="uvc_dialog_codec_type_cancel">CANCEL</string>
+    <string name="uvc_dialog_delete">Delete</string>
+    <string name="uvc_dialog_delete_delete">DELETE</string>
+    <string name="uvc_dialog_delete_cancel">CANCEL</string>
+    <string name="uvc_dialog_delete_delete_origin">DELETE(Include origin)</string>
 </resources>

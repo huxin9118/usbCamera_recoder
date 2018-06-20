@@ -117,7 +117,7 @@ public class OpenGLActivity extends AppCompatActivity {
         Log.i(TAG, "isStreamMedia: " + isStreamMedia);
         Log.i(TAG, "codec_type: " + codec_type);
 
-        setContentView(R.layout.activity_opengl);
+        setContentView(R.layout.uvc_playback_activity_opengl);
 
         root = (RelativeLayout) findViewById(R.id.root);
         bottomBar = (LinearLayout) findViewById(R.id.bottomBar);
@@ -453,7 +453,7 @@ public class OpenGLActivity extends AppCompatActivity {
         builder = new AlertDialog.Builder(this);
         builder.setTitle("YUV格式设置");
         LayoutInflater layoutInflater = getLayoutInflater();
-        View dialogView = layoutInflater.inflate(R.layout.dialog_set_pixel,null);
+        View dialogView = layoutInflater.inflate(R.layout.uvc_playback_dialog_set_pixel,null);
         final EditText textWdith = (EditText) dialogView.findViewById(R.id.textWdith);
         final EditText textHeight = (EditText) dialogView.findViewById(R.id.textHeight);
         final EditText textFps = (EditText) dialogView.findViewById(R.id.textFps);
