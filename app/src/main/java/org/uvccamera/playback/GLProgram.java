@@ -1,11 +1,11 @@
 package org.uvccamera.playback;
 
+import android.opengl.GLES20;
+import android.util.Log;
+
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-
-import android.opengl.GLES20;
-import android.util.Log;
 
 
 /**
@@ -303,7 +303,7 @@ public class GLProgram {
             GLES20.glGetProgramiv(program, GLES20.GL_LINK_STATUS, linkStatus, 0);
             if (linkStatus[0] != GLES20.GL_TRUE) {
                 Log.e(TAG,"Could not link program: ", null);
-                Log.e(TAG,GLES20.glGetProgramInfoLog(program), null);
+                Log.e(TAG, GLES20.glGetProgramInfoLog(program), null);
                 GLES20.glDeleteProgram(program);
                 program = 0;
             }
@@ -323,7 +323,7 @@ public class GLProgram {
             GLES20.glGetShaderiv(shader, GLES20.GL_COMPILE_STATUS, compiled, 0);
             if (compiled[0] == 0) {
                 Log.e(TAG,"Could not compile shader " + shaderType + ":", null);
-                Log.e(TAG,GLES20.glGetShaderInfoLog(shader), null);
+                Log.e(TAG, GLES20.glGetShaderInfoLog(shader), null);
                 GLES20.glDeleteShader(shader);
                 shader = 0;
             }

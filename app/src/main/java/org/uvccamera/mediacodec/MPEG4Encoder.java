@@ -15,16 +15,13 @@ import org.mediacodec.H264Encoder;
 import org.mediacodec.H264Utils;
 
 import java.nio.ByteBuffer;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import static android.media.MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_CQ;
 
-/**
- * Android 4.1.2以上系统提供MediaCodec接口，可以对H264进行编解码
- * 
- * @author chenyang
- * 
- */
-@SuppressLint("NewApi")
 public class MPEG4Encoder extends H264Encoder {
 
 	/**
@@ -65,10 +62,18 @@ public class MPEG4Encoder extends H264Encoder {
 	// private FileOutputStream outfile;
 	private String outputPath;
 	private int rotate;
-	private MediaMuxer mMuxer;
-	private boolean mMuxerStarted;
-	private int mVideoTrackIndex;
-	private int mAudioTrackIndex;
+	private MediaMuxer mediaMuxer;
+	private MediaMuxer oldMediaMuxerMuxer;
+	private String fileName;
+	private String oldFileName;
+	private boolean mediaMuxerStarted;
+	private Timer mediaMuxerTimer;
+	private MPEG4EncoderListener mediaMuxerListener;
+	public static final long AUTO_SAVE_TIME = 10 * 60 * 1000;
+	private int videoTrackIndex;
+	private int audioTrackIndex;
+	private MediaFormat videoMediaFormat;
+	private MediaFormat audioMediaFormat;
 
 	private long startTime = -1;
 
@@ -86,12 +91,18 @@ public class MPEG4Encoder extends H264Encoder {
 	 */
 	public MPEG4Encoder(int width, int height, int framerate, int bitrate, String outputPath, int rotate) {
 		super(width, height, framerate, bitrate);
+		if (DEBUG) {
+			Log.i(TAG, "new");
+		}
 		colorFormat = getFinalSupportColorFormat();
 		this.outputPath = outputPath;
 		this.rotate = rotate;
 	}
 
-	public YuvImage getThumbnailImage() {
+	public synchronized YuvImage getThumbnailImage() {
+		if (DEBUG) {
+			Log.i(TAG, "getThumbnailImage");
+		}
 		if (inData != null) {
 			byte[] yuvBuffer = new byte[width * height * 3 / 2];
 			synchronized (inData) {
@@ -109,7 +120,10 @@ public class MPEG4Encoder extends H264Encoder {
 
 	@Override
 	public void open() {
-		if(videoCodec != null) {
+		if (DEBUG) {
+			Log.i(TAG, "open");
+		}
+		if(mediaMuxer != null) {
 			close();
 		}
 		try {
@@ -131,24 +145,39 @@ public class MPEG4Encoder extends H264Encoder {
 			audioCodec.configure(audioFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
 			audioCodec.start();
 
-			mMuxer = new MediaMuxer(outputPath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
-			mMuxer.setOrientationHint(rotate);
+			fileName = outputPath + new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss").format(new Date()) +".mp4";
+			mediaMuxer = new MediaMuxer(fileName, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
+			mediaMuxer.setOrientationHint(rotate);
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}
 
-		mVideoTrackIndex = -1;
-		mAudioTrackIndex = -1;
-		mMuxerStarted = false;
+		videoTrackIndex = -1;
+		audioTrackIndex = -1;
+		mediaMuxerStarted = false;
+		if(mediaMuxerTimer != null){
+			mediaMuxerTimer.cancel();
+			mediaMuxerTimer = null;
+		}
 		if (DEBUG) {
-			Log.i(TAG, "encoder open colorFormat " + colorFormat);
+			Log.i(TAG, "open colorFormat " + colorFormat);
 		}
 		open = true;
 	}
 
 	@Override
 	public void close() {
+		if (DEBUG) {
+			Log.i(TAG, "close");
+		}
 		open = false;
+		mediaMuxerStarted = false;
+		videoTrackIndex = -1;
+		audioTrackIndex = -1;
+		if(mediaMuxerTimer != null){
+			mediaMuxerTimer.cancel();
+			mediaMuxerTimer = null;
+		}
 
 		try {
 			if(videoCodec != null) {
@@ -161,17 +190,13 @@ public class MPEG4Encoder extends H264Encoder {
 				audioCodec.release();
 			}
 
-			if (mMuxer != null) {
-				mMuxer.stop();
-				mMuxer.release();
-				mMuxer = null;
+			if (mediaMuxer != null) {
+				mediaMuxer.stop();
+				mediaMuxer.release();
+				mediaMuxer = null;
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
-		}
-
-		if (DEBUG) {
-			Log.i(TAG, "encoder close");
 		}
 
 		// if(outfile != null){
@@ -184,13 +209,73 @@ public class MPEG4Encoder extends H264Encoder {
 		// }
 	}
 
+	public void reset() {
+		if (DEBUG) {
+			Log.i(TAG, "reset");
+		}
+		if(mediaMuxerStarted) {
+			mediaMuxerStarted = false;
+			videoTrackIndex = -1;
+			audioTrackIndex = -1;
+			if(mediaMuxerTimer != null){
+				mediaMuxerTimer.cancel();
+				mediaMuxerTimer = null;
+			}
+
+			try {
+				oldMediaMuxerMuxer = mediaMuxer;
+				oldFileName = fileName;
+
+				fileName = outputPath + new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss").format(new Date()) +".mp4";
+				mediaMuxer = new MediaMuxer(fileName, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
+				mediaMuxer.setOrientationHint(rotate);
+
+				if(videoMediaFormat != null) {
+					videoTrackIndex = mediaMuxer.addTrack(videoMediaFormat);
+				}
+				if(audioMediaFormat != null) {
+					audioTrackIndex = mediaMuxer.addTrack(audioMediaFormat);
+				}
+				if (videoTrackIndex != -1 && audioTrackIndex != -1 && !mediaMuxerStarted) {
+					mediaMuxer.start();
+					mediaMuxerStarted = true;
+					mediaMuxerTimer = new Timer();
+					mediaMuxerTimer.schedule(new TimerTask() {
+						@Override
+						public void run() {
+							reset();
+						}
+					},AUTO_SAVE_TIME);
+				}
+
+				if (oldMediaMuxerMuxer != null) {
+					oldMediaMuxerMuxer.stop();
+					oldMediaMuxerMuxer.release();
+					oldMediaMuxerMuxer = null;
+					Log.i(TAG, "reset: 0000000000");
+					if(mediaMuxerListener != null){
+						Log.i(TAG, "reset: 11111111111"+oldFileName);
+						mediaMuxerListener.onAutoSave(oldFileName);
+						oldFileName = null;
+					}
+					Log.i(TAG, "reset: 2222222222");
+				}
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+	}
+
 	@Override
 	public void flush() {
+		if (DEBUG) {
+			Log.i(TAG, "flush");
+		}
 		if(videoCodec != null) {
-			if (DEBUG) {
-				Log.i(TAG, "flush");
-			}
 			videoCodec.flush();
+		}
+		if(audioCodec != null) {
+			audioCodec.flush();
 		}
 	}
 
@@ -199,7 +284,7 @@ public class MPEG4Encoder extends H264Encoder {
 		return 0;
 	}
 
-	public int encodeVideo(byte[] in, int offset, int length) {
+	public synchronized int encodeVideo(byte[] in, int offset, int length) {
 		if (DEBUG) {
 			Log.i(TAG, "encodeVideo");
 		}
@@ -259,18 +344,27 @@ public class MPEG4Encoder extends H264Encoder {
 				 *	}
 				 *	</code>
 				 */
-				MediaFormat mediaFormat = videoCodec.getOutputFormat();
+				videoMediaFormat = videoCodec.getOutputFormat();
 
 				if (DEBUG) {
-					Log.i(TAG, "mediaFormat : " + mediaFormat.toString());
+					Log.i(TAG, "mediaFormat : " + videoMediaFormat.toString());
 				}
 				
 				// now that we have the Magic Goodies, start the muxer
-				mVideoTrackIndex = mMuxer.addTrack(mediaFormat);
-				Log.i(TAG, "encode: mVideoTrackIndex = "+mVideoTrackIndex);
-				if(mVideoTrackIndex != -1 && mAudioTrackIndex != -1 && !mMuxerStarted) {
-					mMuxer.start();
-					mMuxerStarted = true;
+				videoTrackIndex = mediaMuxer.addTrack(videoMediaFormat);
+				Log.i(TAG, "encode: videoTrackIndex = "+ videoTrackIndex);
+				synchronized (this) {
+					if (videoTrackIndex != -1 && audioTrackIndex != -1 && !mediaMuxerStarted) {
+						mediaMuxer.start();
+						mediaMuxerStarted = true;
+						mediaMuxerTimer = new Timer();
+						mediaMuxerTimer.schedule(new TimerTask() {
+							@Override
+							public void run() {
+								reset();
+							}
+						},AUTO_SAVE_TIME);
+					}
 				}
 			} else if (outputBufferIndex >= 0) {
 				if (DEBUG) {
@@ -279,8 +373,8 @@ public class MPEG4Encoder extends H264Encoder {
 				ByteBuffer outputBuffer = videoCodec.getOutputBuffer(outputBufferIndex);
 				outputBuffer.position(videoBufferInfo.offset);
 				outputBuffer.limit(videoBufferInfo.offset + videoBufferInfo.size);
-				if(mMuxerStarted && outputBuffer != null && videoBufferInfo.size != 0) {
-					mMuxer.writeSampleData(mVideoTrackIndex, outputBuffer, videoBufferInfo);
+				if(mediaMuxerStarted && videoBufferInfo.size != 0) {
+					mediaMuxer.writeSampleData(videoTrackIndex, outputBuffer, videoBufferInfo);
 				}
 				videoCodec.releaseOutputBuffer(outputBufferIndex, false);
 			}
@@ -288,7 +382,7 @@ public class MPEG4Encoder extends H264Encoder {
 		return videoBufferInfo.size;
 	}
 
-	public int encodeAudio(byte[] in, int offset, int length) {
+	public synchronized int encodeAudio(byte[] in, int offset, int length) {
 		if (DEBUG) {
 			Log.i(TAG, "encodeAudio");
 		}
@@ -323,16 +417,25 @@ public class MPEG4Encoder extends H264Encoder {
 			if (outputBufferIndex == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
 
 			} else if (outputBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
-				MediaFormat mediaFormat = audioCodec.getOutputFormat();
+				audioMediaFormat = audioCodec.getOutputFormat();
 				if (DEBUG) {
-					Log.i(TAG, "mediaFormat : " + mediaFormat.toString());
+					Log.i(TAG, "mediaFormat : " + audioMediaFormat.toString());
 				}
 				// now that we have the Magic Goodies, start the muxer
-				mAudioTrackIndex = mMuxer.addTrack(mediaFormat);
-				Log.i(TAG, "encode: mAudioTrackIndex = "+mAudioTrackIndex);
-				if(mVideoTrackIndex != -1 && mAudioTrackIndex != -1 && !mMuxerStarted) {
-					mMuxer.start();
-					mMuxerStarted = true;
+				audioTrackIndex = mediaMuxer.addTrack(audioMediaFormat);
+				Log.i(TAG, "encode: audioTrackIndex = "+ audioTrackIndex);
+				synchronized (this) {
+					if (videoTrackIndex != -1 && audioTrackIndex != -1 && !mediaMuxerStarted) {
+						mediaMuxer.start();
+						mediaMuxerStarted = true;
+						mediaMuxerTimer = new Timer();
+						mediaMuxerTimer.schedule(new TimerTask() {
+							@Override
+							public void run() {
+								reset();
+							}
+						},AUTO_SAVE_TIME,AUTO_SAVE_TIME);
+					}
 				}
 			} else if (outputBufferIndex >= 0) {
 				if (DEBUG) {
@@ -341,8 +444,8 @@ public class MPEG4Encoder extends H264Encoder {
 				ByteBuffer outputBuffer = audioCodec.getOutputBuffer(outputBufferIndex);
 				outputBuffer.position(audioBufferInfo.offset);
 				outputBuffer.limit(audioBufferInfo.offset + audioBufferInfo.size);
-				if(mMuxerStarted && outputBuffer != null && audioBufferInfo.size != 0) {
-					mMuxer.writeSampleData(mAudioTrackIndex, outputBuffer, audioBufferInfo);
+				if(mediaMuxerStarted && audioBufferInfo.size != 0) {
+					mediaMuxer.writeSampleData(audioTrackIndex, outputBuffer, audioBufferInfo);
 				}
 				audioCodec.releaseOutputBuffer(outputBufferIndex, false);
 			}
@@ -417,4 +520,19 @@ public class MPEG4Encoder extends H264Encoder {
 		return time - startTime;
 	}
 
+	public void setMediaMuxerListener(MPEG4EncoderListener mediaMuxerListener) {
+		this.mediaMuxerListener = mediaMuxerListener;
+	}
+
+	public void removeMediaMuxerListener() {
+		this.mediaMuxerListener = null;
+	}
+
+	public String getFileName() {
+		return fileName;
+	}
+
+	public interface MPEG4EncoderListener{
+		void onAutoSave(String fileName);
+	}
 }

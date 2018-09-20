@@ -68,9 +68,12 @@ public final class USBMonitor {
 	private static final int DEVICE_STATE_CONNECT = 2;
 	private static final int DEVICE_STATE_DISCONNECT = 3;
 	private static final int DEVICE_STATE_CANCEL = 4;
-	private static final int DEVICE_STATE_START_PREVIEW = 5;
-	private static final int DEVICE_STATE_STOP_PREVIEW = 6;
-	private static final int DEVICE_FIRST_RECEIVER = 7;
+	private static final int DEVICE_STATE_START_CAPTURE = 5;
+	private static final int DEVICE_STATE_STOP_CAPTURE = 6;
+	private static final int DEVICE_STATE_START_RECODER = 7;
+	private static final int DEVICE_STATE_STOP_RECODER = 8;
+	private static final int DEVICE_STATE_AUTO_SAVE_RECODER = 9;
+	private static final int DEVICE_FIRST_RECEIVER = 10;
 
 	private UsbManager mUsbManager = null;
 	private WeakReference<Context> mWeakContext = null;
@@ -146,7 +149,7 @@ public final class USBMonitor {
 		}
 	}
 
-	private void notifyOnDeviceConnectListener(int state){
+	private void notifyOnDeviceConnectListener(int state, Object... args){
 		for(OnDeviceConnectListener listener : onDeviceConnectListenerSet) {
 			switch (state) {
 				case DEVICE_STATE_ATTACH:
@@ -164,11 +167,20 @@ public final class USBMonitor {
 				case DEVICE_STATE_CANCEL:
 					listener.onCancel(device);
 					break;
-				case DEVICE_STATE_START_PREVIEW:
-					listener.onStartPreview();
+				case DEVICE_STATE_START_CAPTURE:
+					listener.onStartCapture();
 					break;
-				case DEVICE_STATE_STOP_PREVIEW:
-					listener.onStopPreview();
+				case DEVICE_STATE_STOP_CAPTURE:
+					listener.onStopCapture();
+					break;
+				case DEVICE_STATE_START_RECODER:
+					listener.onStartReoder();
+					break;
+				case DEVICE_STATE_STOP_RECODER:
+					listener.onStopReoder((String)args[0]);
+					break;
+				case DEVICE_STATE_AUTO_SAVE_RECODER:
+					listener.onAutoSaveReoder((String)args[0]);
 					break;
 				case DEVICE_FIRST_RECEIVER:
 					listener.onFirstReceiver();
@@ -215,7 +227,7 @@ public final class USBMonitor {
 	public void startCapture(int width, int height, int rotate) {
 		Log.i(TAG, "startCapture");
 		if(device != null && mUVCCamera != null && surfaceHolder != null && getUsbCameraConnect()  && !isCapture()) {
-			notifyOnDeviceConnectListener(DEVICE_STATE_START_PREVIEW);
+			notifyOnDeviceConnectListener(DEVICE_STATE_START_CAPTURE);
 
 			if(!TextUtils.isEmpty(mUVCCamera.mSupportedSize)) {
 				Log.i(TAG, "supportedSize:" + mUVCCamera.mSupportedSize);
@@ -278,12 +290,14 @@ public final class USBMonitor {
 //					e.printStackTrace();
 //				}
 //			}
-			notifyOnDeviceConnectListener(DEVICE_STATE_STOP_PREVIEW);
+			notifyOnDeviceConnectListener(DEVICE_STATE_STOP_CAPTURE);
 		}
 	}
 
 	public void startRecoder(int width, int height, int frameRate, int bitRate, String outputPath, int rotate) {
 		if(isCapture()) {
+			notifyOnDeviceConnectListener(DEVICE_STATE_START_RECODER);
+
 			if (mp4Encoder != null) {
 				mp4Encoder.close();
 				mp4Encoder = null;
@@ -301,7 +315,7 @@ public final class USBMonitor {
 			}
 
 			int audioSource = MediaRecorder.AudioSource.MIC;
-			int sampleRate = 32000;//所有android系统都支持
+			int sampleRate = 32000;
 			int channelConfig = AudioFormat.CHANNEL_IN_STEREO;
 			int autioFormat = AudioFormat.ENCODING_PCM_16BIT;//PCM_16是所有android系统都支持的
 			int minBufferSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, autioFormat);//计算AudioRecord内部最小buffer
@@ -324,8 +338,31 @@ public final class USBMonitor {
 //			}
 
 			mp4Encoder = new MPEG4Encoder(width, height, frameRate, bitRate, outputPath, rotate);
+			mp4Encoder.setMediaMuxerListener(new MPEG4Encoder.MPEG4EncoderListener() {
+				@Override
+				public void onAutoSave(String fileName) {
+					notifyOnDeviceConnectListener(DEVICE_STATE_AUTO_SAVE_RECODER, fileName);
+				}
+			});
 //			mp4Encoder = new HH264Encoder(width, height, frameRate, bitRate);
 			mp4Encoder.open();
+		}
+	}
+
+	private void audioVolumeChange(byte[] src, float times) {
+		for (int i = 0; i < src.length; i += 2) {
+			short shortData = (short) ((src[i] & 0xff) | ((src[i + 1] << 8) & 0xff00));
+			int handleData = (int)(shortData * times);
+			if (handleData > 32767) {
+				shortData = 32767;
+			}else if (handleData < -32767) {
+				shortData = -32767;
+			}
+			 else{
+				shortData = (short)handleData;
+			}
+			src[i] = (byte)(shortData & 0xff);
+			src[i + 1] = (byte)((shortData & 0xff00) >> 8);
 		}
 	}
 
@@ -334,13 +371,27 @@ public final class USBMonitor {
 		public void run() {
 			if(audioRecord != null) {
 				isAudioRecord = true;
+				try {
+					Thread.sleep(10);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
 				while (isAudioRecord) {
 					int read_result = audioRecord.read(audioRecordBuffer, 0, audioRecordBuffer.length);
+					if(read_result == 0){
+						try {
+							Thread.sleep(10);
+						} catch (InterruptedException e) {
+							e.printStackTrace();
+						}
+						continue;
+					}
+//					audioVolumeChange(audioRecordBuffer, 7);
 					Log.i(TAG, "run: read_result = " + read_result);
 					if(mp4Encoder != null && mp4Encoder.isOpen()) {
 						mp4Encoder.encodeAudio(audioRecordBuffer, 0, read_result);
 //						try {
-//							outputStream.write(audioRecordBuffer);
+//							outputStream.write(audioRecordBuffer , 0 , read_result);
 //						} catch (IOException e) {
 //							e.printStackTrace();
 //						}
@@ -368,6 +419,13 @@ public final class USBMonitor {
 	public void stopRecoder() {
 		if(isCapture()) {
 			if (mp4Encoder != null) {
+				String fileName = mp4Encoder.getFileName();
+				if(fileName == null){
+					fileName = "";
+				}
+				notifyOnDeviceConnectListener(DEVICE_STATE_STOP_RECODER, fileName);
+
+				mp4Encoder.removeMediaMuxerListener();
 				mp4Encoder.close();
 				mp4Encoder = null;
 			}
@@ -407,6 +465,7 @@ public final class USBMonitor {
 			if (ACTION_USB_PERMISSION.equals(action)) {
 				// when received the result of requesting USB permission
 				synchronized (this) {
+					Log.i(TAG, "onReceive: ACTION_USB_PERMISSION");
 					notifyOnDeviceConnectListener(DEVICE_FIRST_RECEIVER);
 					device = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
 					if (device != null && intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)) {
@@ -423,6 +482,7 @@ public final class USBMonitor {
 				}
 			} else if (UsbManager.ACTION_USB_DEVICE_ATTACHED.equals(action)) {
 				synchronized (this) {
+					Log.i(TAG, "onReceive: ACTION_USB_DEVICE_ATTACHED");
 					device = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
 					if (device != null) {
 						if (device.getDeviceClass() == 239 && device.getDeviceSubclass() == 2) {
@@ -446,6 +506,7 @@ public final class USBMonitor {
 				}
 			} else if (UsbManager.ACTION_USB_DEVICE_DETACHED.equals(action)) {
 				synchronized (this) {
+					Log.i(TAG, "onReceive: ACTION_USB_DEVICE_DETACHED");
 					device = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
 					if (device != null) {
 						stopRecoder();

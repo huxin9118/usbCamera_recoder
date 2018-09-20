@@ -1,6 +1,5 @@
 package org.uvccamera.utils;
 
-
 import org.uvccamera.R;
 
 /**

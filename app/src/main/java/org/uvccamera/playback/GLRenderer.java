@@ -128,7 +128,7 @@ public class GLRenderer implements GLSurfaceView.Renderer {
                 prog.createBuffers(squareVertices);
             }
 
-//             request to render
+            // request to render
             if(mSurface.get() != null) {
                 mSurface.get().requestRender();
             }
@@ -186,7 +186,7 @@ public class GLRenderer implements GLSurfaceView.Renderer {
         }
     }
 
-    void clearScreen(byte ydata,byte udata, byte vdata){
+    void clearScreen(byte ydata, byte udata, byte vdata){
         if (pixel_width > 0 && pixel_height > 0) {
             int yarraySize = pixel_width * pixel_height;
             int uvarraySize = yarraySize / 4;
@@ -317,7 +317,7 @@ public class GLRenderer implements GLSurfaceView.Renderer {
         void setProgressRateFull();
         void setProgressDuration(long duration);
         void setProgressDTS(long dts);
-        void showIFrameDTS(long I_Frame_dts,int forwardOffset);
+        void showIFrameDTS(long I_Frame_dts, int forwardOffset);
         void initOrientation();
         void hideLoading();
         void showLoading();

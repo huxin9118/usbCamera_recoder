@@ -253,35 +253,11 @@ public class LocalUVCPreviewActivity extends Activity{
             @Override
             public void onClick(View view) {
                 if(!isRecording){
-                    Log.i(TAG, "开启录像");
-                    isRecording = true;
-                    btnShoot.setImageResource(R.drawable.uvc_preview_selector_record_shoot_end);
-                    lytop.setVisibility(View.INVISIBLE);
-                    lyPreview.setVisibility(View.INVISIBLE);
-                    lySetting.setVisibility(View.INVISIBLE);
-                    bottomBar.setBackgroundColor(Color.parseColor("#00000000"));
-                    updateShootTime(true);
-
-                    outputPath = DEFAILT_LOCAL_UVC + new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss").format(new Date()) +".mp4";
+                    outputPath = DEFAILT_LOCAL_UVC;
                     Log.i(TAG, "outputPath: ["+outputPath+"]");
                     usbMonitor.startRecoder(capture_width,capture_height,25, 4000000,outputPath, capture_rotate);
                 }else{
-                    Log.i(TAG, "停止录像");
-                    isRecording = false;
-                    btnShoot.setImageResource(R.drawable.uvc_preview_selector_record_shoot_start);
-                    lytop.setVisibility(View.VISIBLE);
-                    lyPreview.setVisibility(View.VISIBLE);
-                    lySetting.setVisibility(View.VISIBLE);
-                    bottomBar.setBackgroundColor(Color.parseColor("#664c4c4c"));
-                    updateShootTime(false);
-
-                    YuvImage thumbnailImage = usbMonitor.getThumbnailImage();
-                    if(thumbnailImage != null){
-                        new DownLoadThumbnailTask(new WeakReference(LocalUVCPreviewActivity.this), thumbnailImage).execute();
-                    }
                     usbMonitor.stopRecoder();
-                    Toast.makeText(LocalUVCPreviewActivity.this,getResources().getText(R.string.uvc_recode_success).toString()
-                            +outputPath+getResources().getText(R.string.uvc_recode_success_unit).toString(),Toast.LENGTH_LONG).show();
                 }
             }
         });
@@ -406,7 +382,7 @@ public class LocalUVCPreviewActivity extends Activity{
 
 
             @Override
-            public void onStartPreview() {
+            public void onStartCapture() {
                 btnSetting.setAlpha(1f);
                 imgSetting.setAlpha(1f);
                 btnShoot.setAlpha(1f);
@@ -416,13 +392,56 @@ public class LocalUVCPreviewActivity extends Activity{
             }
 
             @Override
-            public void onStopPreview() {
+            public void onStopCapture() {
                 btnSetting.setAlpha(0.4f);
                 imgSetting.setAlpha(0.4f);
                 btnShoot.setAlpha(0.4f);
 //                btnPreview.setEnabled(false);
                 btnSetting.setEnabled(false);
                 btnShoot.setEnabled(false);
+            }
+
+            @Override
+            public void onStartReoder() {
+                Log.i(TAG, "开启录像");
+                isRecording = true;
+                btnShoot.setImageResource(R.drawable.uvc_preview_selector_record_shoot_end);
+                lytop.setVisibility(View.INVISIBLE);
+                lyPreview.setVisibility(View.INVISIBLE);
+                lySetting.setVisibility(View.INVISIBLE);
+                bottomBar.setBackgroundColor(Color.parseColor("#00000000"));
+                updateShootTime(true);
+            }
+
+            @Override
+            public void onStopReoder(String fileName) {
+                Log.i(TAG, "停止录像");
+                isRecording = false;
+                btnShoot.setImageResource(R.drawable.uvc_preview_selector_record_shoot_start);
+                lytop.setVisibility(View.VISIBLE);
+                lyPreview.setVisibility(View.VISIBLE);
+                lySetting.setVisibility(View.VISIBLE);
+                bottomBar.setBackgroundColor(Color.parseColor("#664c4c4c"));
+                updateShootTime(false);
+
+                YuvImage thumbnailImage = usbMonitor.getThumbnailImage();
+                if(thumbnailImage != null){
+                    new DownLoadThumbnailTask(new WeakReference(LocalUVCPreviewActivity.this), thumbnailImage).execute();
+                }
+                Toast.makeText(LocalUVCPreviewActivity.this,getResources().getText(R.string.uvc_recode_success).toString()
+                        +DEFAILT_LOCAL_UVC+getResources().getText(R.string.uvc_recode_success_unit).toString(),Toast.LENGTH_LONG).show();
+
+            }
+
+            @Override
+            public void onAutoSaveReoder(final String fileName) {
+//                runOnUiThread(new Runnable() {
+//                    @Override
+//                    public void run() {
+//                        Toast.makeText(LocalUVCPreviewActivity.this,getResources().getText(R.string.uvc_recode_success).toString()
+//                                +fileName+getResources().getText(R.string.uvc_recode_success_unit).toString(),Toast.LENGTH_LONG).show();
+//                    }
+//                });
             }
 
             @Override

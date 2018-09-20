@@ -14,7 +14,7 @@ import java.lang.ref.WeakReference;
 /**
  * Created by th on 17-2-16.
  */
-public class UsbControlBlock implements  Cloneable{
+public class UsbControlBlock implements Cloneable {
     private WeakReference<USBMonitor> mWeakMonitor = null;
     private WeakReference<UsbDevice> mWeakDevice = null;
     protected UsbDeviceConnection mConnection;

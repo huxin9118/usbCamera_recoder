@@ -34,9 +34,15 @@ public interface OnDeviceConnectListener {
      */
     public void onCancel(UsbDevice device);
 
-    public void onStartPreview();
+    public void onStartCapture();
 
-    public void onStopPreview();
+    public void onStopCapture();
+
+    public void onStartReoder();
+
+    public void onStopReoder(String fileName);
+
+    public void onAutoSaveReoder(String fileName);
 
     public void onFirstReceiver();
 }
