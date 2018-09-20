@@ -342,7 +342,7 @@ public class OpenGLActivity extends AppCompatActivity {
         mGLSurface = (GLSurfaceView)findViewById(R.id.mGLSurface);
         mGLSurface.setEGLContextClientVersion(2);
         mGLRenderer = new GLRenderer(mGLSurface);
-		mGLRenderer.nativeCodecType(codec_type);
+        mGLRenderer.nativeCodecType(codec_type);
         mGLSurface.setRenderer(mGLRenderer);
         mGLSurface.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
 
@@ -572,14 +572,14 @@ public class OpenGLActivity extends AppCompatActivity {
                     dialog.dismiss();
                 }
                 catch (Exception e){
-                    showToast("请输入正确的YUV解码参数~~", Toast.LENGTH_SHORT);
+                    showToast("请输入正确的YUV解码参数~~",Toast.LENGTH_SHORT);
                 }
             }
         });
     }
 
     private void showCodecTypeDialog(){
-        final SharedPreferences sp = getSharedPreferences("user", Context.MODE_PRIVATE);
+        final SharedPreferences sp = getSharedPreferences("user",Context.MODE_PRIVATE);
         Log.i(TAG, "showCodecTypeDialog: codec_type = "+codec_type);
 
         builder = new AlertDialog.Builder(this);
@@ -892,7 +892,7 @@ public class OpenGLActivity extends AppCompatActivity {
                     activity.progressRate.setMax((int)duration);
                 }
                 else if(msg.what == -1) {//播放完成消息
-                    activity.showToast("播放完成~~", Toast.LENGTH_SHORT);
+                    activity.showToast("播放完成~~",Toast.LENGTH_SHORT);
                 }
                 else {//YUV进度更新专用消息
                     activity.timeStart.setText(msg.what + "");

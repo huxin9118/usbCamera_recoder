@@ -31,7 +31,7 @@ MediaCodecDecoder* mediacodec_decoder_alloc1(int isDebug, int timeout, YUV_PIXEL
 }
 
 MediaCodecDecoder* mediacodec_decoder_alloc2(int isDebug) {
-	return mediacodec_decoder_alloc1(isDebug, 0, NV12);
+	return mediacodec_decoder_alloc1(isDebug, 1000, NV12);
 }
 
 MediaCodecDecoder* mediacodec_decoder_alloc3(){
@@ -50,6 +50,30 @@ int mediacodec_decoder_free(MediaCodecDecoder* decoder) {
 	else{
 		if (decoder->DEBUG) {
 			MediaCodec_LOGE("[free]ERROR_SDK_DECODER_IS_NULL");
+		}
+		return -1;
+	}
+}
+
+int mediacodec_decoder_flush(MediaCodecDecoder* decoder) {
+	if(decoder){
+		if (decoder->DEBUG) {
+			MediaCodec_LOGI("[flush]");
+		}
+		
+		int status;
+		
+		status = AMediaCodec_flush(decoder->codec);
+		if(status){
+			if (decoder->DEBUG) {
+				MediaCodec_LOGE("[flush]AMediaCodec_flush error");
+			}
+		}
+		return status;
+	}
+	else{
+		if (decoder->DEBUG) {
+			MediaCodec_LOGE("[flush]ERROR_SDK_DECODER_IS_NULL");
 		}
 		return -1;
 	}
@@ -239,18 +263,13 @@ int mediacodec_decoder_decode(MediaCodecDecoder* decoder, uint8_t* in, int offse
 		}
 
 		AMediaCodecBufferInfo bufferInfo;
-		ssize_t outputBufferIndex = 0;
+		ssize_t outputBufferIndex = AMediaCodec_dequeueOutputBuffer(decoder->codec, &bufferInfo, decoder->TIME_OUT);
 		size_t outputBufferSize = 0;
 		size_t expectBufferSize = 0;
-	
-		while (outputBufferIndex != AMEDIACODEC_INFO_TRY_AGAIN_LATER) {
-			outputBufferIndex = AMediaCodec_dequeueOutputBuffer(decoder->codec, &bufferInfo, decoder->TIME_OUT);
-
-			if (decoder->DEBUG) {
-				MediaCodec_LOGI("outputBufferIndex : %d",outputBufferIndex);
-			}
-		
-		
+	    if (decoder->DEBUG) {
+            MediaCodec_LOGI("outputBufferIndex : %d", outputBufferIndex);
+        }
+		if(outputBufferIndex != AMEDIACODEC_INFO_TRY_AGAIN_LATER) {
 			if(outputBufferIndex <= -20000){
 				if (decoder->DEBUG) {
 					MediaCodec_LOGE("AMEDIA_DRM_ERROR_BASE");
@@ -268,7 +287,6 @@ int mediacodec_decoder_decode(MediaCodecDecoder* decoder, uint8_t* in, int offse
 
 			if (outputBufferIndex == AMEDIACODEC_INFO_OUTPUT_BUFFERS_CHANGED) {
 				// outputBuffers = codec.getOutputBuffers();
-				continue;
 			} 
 			else if (outputBufferIndex == AMEDIACODEC_INFO_OUTPUT_FORMAT_CHANGED) {
 				/**
@@ -436,7 +454,6 @@ int mediacodec_decoder_decode(MediaCodecDecoder* decoder, uint8_t* in, int offse
 				AMediaCodec_releaseOutputBuffer(decoder->codec, outputBufferIndex, 0);
 			}
 		}
-
 		return size;
 	}
 	else{

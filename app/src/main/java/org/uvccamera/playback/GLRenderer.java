@@ -128,7 +128,7 @@ public class GLRenderer implements GLSurfaceView.Renderer {
                 prog.createBuffers(squareVertices);
             }
 
-            // request to render
+//             request to render
             if(mSurface.get() != null) {
                 mSurface.get().requestRender();
             }
@@ -159,11 +159,11 @@ public class GLRenderer implements GLSurfaceView.Renderer {
                     y = ByteBuffer.allocate(yarraySize);
                     u = ByteBuffer.allocate(uvarraySize);
                     v = ByteBuffer.allocate(uvarraySize);
+                    clearScreen((byte)0,(byte)128,(byte)128);
                 }
             }
         }
         updateZoom(render_zoom);
-//        clearScreen(127);
     }
 
     /**
@@ -186,17 +186,23 @@ public class GLRenderer implements GLSurfaceView.Renderer {
         }
     }
 
-    void clearScreen(byte data){
+    void clearScreen(byte ydata,byte udata, byte vdata){
         if (pixel_width > 0 && pixel_height > 0) {
             int yarraySize = pixel_width * pixel_height;
             int uvarraySize = yarraySize / 4;
-            byte[] ydata = new byte[yarraySize];
-            byte[] udata = new byte[uvarraySize];
-            byte[] vdata = new byte[uvarraySize];
-            Arrays.fill(ydata, data);
-            Arrays.fill(udata, data);
-            Arrays.fill(vdata, data);
-            updateData(ydata, udata, vdata);
+            byte[] ydatas = new byte[yarraySize];
+            byte[] udatas = new byte[uvarraySize];
+            byte[] vdatas = new byte[uvarraySize];
+            Arrays.fill(ydatas, ydata);
+            Arrays.fill(udatas, udata);
+            Arrays.fill(vdatas, vdata);
+
+            y.clear();
+            u.clear();
+            v.clear();
+            y.put(ydatas, 0, ydatas.length);
+            u.put(udatas, 0, udatas.length);
+            v.put(vdatas, 0, vdatas.length);
         }
     }
 
@@ -311,7 +317,7 @@ public class GLRenderer implements GLSurfaceView.Renderer {
         void setProgressRateFull();
         void setProgressDuration(long duration);
         void setProgressDTS(long dts);
-        void showIFrameDTS(long I_Frame_dts, int forwardOffset);
+        void showIFrameDTS(long I_Frame_dts,int forwardOffset);
         void initOrientation();
         void hideLoading();
         void showLoading();

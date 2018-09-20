@@ -7,6 +7,7 @@
     <permission android:name="android.hardware.usb.host" />
     <permission android:name="android.hardware.usb.UsbAccessory" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MOUNT_UNMOUNT_FILESYSTEMS" />
 
     <uses-feature

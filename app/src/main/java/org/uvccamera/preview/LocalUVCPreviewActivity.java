@@ -68,6 +68,7 @@ public class LocalUVCPreviewActivity extends Activity{
     private static final boolean DEBUG = true;	// TODO set false on release
     private static final String TAG = "UVCDebug_MainActivity";
     public static final String PERMISSION_WRITE_EXTERNAL_STORAGE= "android.permission.WRITE_EXTERNAL_STORAGE";
+    public static final String PERMISSION_RECORD_AUDIO= "android.permission.RECORD_AUDIO";
     public static final int PERMISSION_REQUESTCODE = 0;
 
     public static final String DEFAILT_LOCAL_UVC = Environment.getExternalStorageDirectory().getPath() + File.separator + "MPTT"
@@ -397,10 +398,12 @@ public class LocalUVCPreviewActivity extends Activity{
             }
             @Override
             public void onDisconnect(UsbDevice device, UsbControlBlock ctrlBlock) {
-                Toast.makeText(LocalUVCPreviewActivity.this,R.string.uvc_diconnect,Toast.LENGTH_SHORT).show();
             }
             @Override
-            public void onCancel(UsbDevice device) {}
+            public void onCancel(UsbDevice device) {
+                Toast.makeText(LocalUVCPreviewActivity.this,R.string.uvc_diconnect,Toast.LENGTH_SHORT).show();
+            }
+
 
             @Override
             public void onStartPreview() {
@@ -432,14 +435,15 @@ public class LocalUVCPreviewActivity extends Activity{
                 if(usbMonitor != null && usbMonitor.getEncoder() != null && usbMonitor.getEncoder().isOpen()) {
                     byte[] byteFrame = new byte[frame.remaining()];
                     frame.get(byteFrame, 0, byteFrame.length);
-                    usbMonitor.getEncoder().encode(byteFrame, 0, new byte[1920*1080*3/2], byteFrame.length);
+                    usbMonitor.getEncoder().encodeVideo(byteFrame, 0, byteFrame.length);
                 }
             }
         };
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if(checkSelfPermission(PERMISSION_WRITE_EXTERNAL_STORAGE)!= PackageManager.PERMISSION_GRANTED){
-                requestPermissions(new String[]{PERMISSION_WRITE_EXTERNAL_STORAGE},PERMISSION_REQUESTCODE);
+            if(checkSelfPermission(PERMISSION_WRITE_EXTERNAL_STORAGE)!= PackageManager.PERMISSION_GRANTED
+                    || checkSelfPermission(PERMISSION_RECORD_AUDIO)!= PackageManager.PERMISSION_GRANTED){
+                requestPermissions(new String[]{PERMISSION_WRITE_EXTERNAL_STORAGE,PERMISSION_RECORD_AUDIO},PERMISSION_REQUESTCODE);
             }
             else{
                 usbMonitor = new USBMonitor(this);
@@ -460,13 +464,19 @@ public class LocalUVCPreviewActivity extends Activity{
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         switch (requestCode) {
             case PERMISSION_REQUESTCODE:
-                if ("android.permission.WRITE_EXTERNAL_STORAGE".equals(permissions[0])
-                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    usbMonitor = new USBMonitor(this);
-                    usbMonitor.register();
-                    usbMonitor.addOnDeviceConnectListener(usbDeviceConnectListener);
-                    usbMonitor.initCheckUVCState(usbDeviceConnectListener);
+                if (!(PERMISSION_WRITE_EXTERNAL_STORAGE.equals(permissions[0])
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED)) {
+                    break;
                 }
+                if (!(PERMISSION_RECORD_AUDIO.equals(permissions[1])
+                        && grantResults[1] == PackageManager.PERMISSION_GRANTED)) {
+                    break;
+                }
+
+                usbMonitor = new USBMonitor(this);
+                usbMonitor.register();
+                usbMonitor.addOnDeviceConnectListener(usbDeviceConnectListener);
+                usbMonitor.initCheckUVCState(usbDeviceConnectListener);
                 break;
         }
     }

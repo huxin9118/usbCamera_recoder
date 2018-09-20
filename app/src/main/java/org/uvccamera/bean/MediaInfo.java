@@ -6,7 +6,7 @@ package org.uvccamera.bean;
 
 public class MediaInfo {
     private String url;
-    private Long time;
+    private long time;
     private String type;
     private String thumbnailPath;
     private boolean isDownLoadThumbnailTask;
@@ -24,11 +24,11 @@ public class MediaInfo {
         this.url = url;
     }
 
-    public Long getTime() {
+    public long getTime() {
         return time;
     }
 
-    public void setTime(Long time) {
+    public void setTime(long time) {
         this.time = time;
     }
 

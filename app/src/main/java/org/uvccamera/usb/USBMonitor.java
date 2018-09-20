@@ -31,6 +31,10 @@ import android.content.IntentFilter;
 import android.graphics.YuvImage;
 import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbManager;
+import android.media.AudioFormat;
+import android.media.AudioRecord;
+import android.media.MediaRecorder;
+import android.os.Environment;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.SurfaceHolder;
@@ -38,9 +42,12 @@ import android.view.SurfaceHolder;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.mediacodec.MPEG4Encoder;
+import org.uvccamera.mediacodec.MPEG4Encoder;
 
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -100,8 +107,12 @@ public final class USBMonitor {
 	FileOutputStream outputStream;
 	private static int index = 0;
 
-	private MPEG4Encoder mEncoder;
-//	private HH264Encoder mEncoder;
+	private MPEG4Encoder mp4Encoder;
+//	private HH264Encoder mp4Encoder;
+	private AudioRecord audioRecord;
+	private byte[] audioRecordBuffer;
+	private boolean isAudioRecord;
+	private AudioRecordThread audioRecordThread;
 
 	public USBMonitor(final Context context) {
 		mWeakContext = new WeakReference<Context>(context);
@@ -272,31 +283,109 @@ public final class USBMonitor {
 	}
 
 	public void startRecoder(int width, int height, int frameRate, int bitRate, String outputPath, int rotate) {
-		if(mEncoder != null && !isCapture()){
-			mEncoder.close();
-			mEncoder = null;
+		if(isCapture()) {
+			if (mp4Encoder != null) {
+				mp4Encoder.close();
+				mp4Encoder = null;
+			}
+
+			if (audioRecordThread != null && audioRecord != null) {
+				if(audioRecordThread != null && audioRecord != null){
+					isAudioRecord = false;
+					try {
+						audioRecordThread.join();
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
+			}
+
+			int audioSource = MediaRecorder.AudioSource.MIC;
+			int sampleRate = 32000;//所有android系统都支持
+			int channelConfig = AudioFormat.CHANNEL_IN_STEREO;
+			int autioFormat = AudioFormat.ENCODING_PCM_16BIT;//PCM_16是所有android系统都支持的
+			int minBufferSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, autioFormat);//计算AudioRecord内部最小buffer
+			Log.i(TAG, "startRecoder: minBufferSize="+minBufferSize);
+			audioRecord = new AudioRecord(audioSource, sampleRate, channelConfig, autioFormat, minBufferSize * 2);
+			audioRecordBuffer = new byte[sampleRate / (1000/20) * 2 * (16/8)];//20ms 双通道 16bit 的一帧数据
+			audioRecord.startRecording();
+			audioRecordThread = new AudioRecordThread();
+			audioRecordThread.start();
+
+//			File env = Environment.getExternalStorageDirectory();
+//			File file = new File(env.toString() + "/record.pcm");
+//			if(file.exists()){
+//				file.delete();
+//			}
+//			try {
+//				outputStream = new FileOutputStream(file);
+//			} catch (FileNotFoundException e) {
+//				e.printStackTrace();
+//			}
+
+			mp4Encoder = new MPEG4Encoder(width, height, frameRate, bitRate, outputPath, rotate);
+//			mp4Encoder = new HH264Encoder(width, height, frameRate, bitRate);
+			mp4Encoder.open();
 		}
-		mEncoder = new MPEG4Encoder(width, height, frameRate, bitRate, outputPath, rotate);
-//		mEncoder = new HH264Encoder(width, height, frameRate, bitRate);
-		mEncoder.open();
 	}
 
+	private class AudioRecordThread extends Thread{
+		@Override
+		public void run() {
+			if(audioRecord != null) {
+				isAudioRecord = true;
+				while (isAudioRecord) {
+					int read_result = audioRecord.read(audioRecordBuffer, 0, audioRecordBuffer.length);
+					Log.i(TAG, "run: read_result = " + read_result);
+					if(mp4Encoder != null && mp4Encoder.isOpen()) {
+						mp4Encoder.encodeAudio(audioRecordBuffer, 0, read_result);
+//						try {
+//							outputStream.write(audioRecordBuffer);
+//						} catch (IOException e) {
+//							e.printStackTrace();
+//						}
+					}
+				}
+				audioRecord.stop();
+				audioRecord = null;
+			}
+		}
+	}
+
+
 	/**
-	 * Get a YUVImage from mEncoder,
+	 * Get a YUVImage from mp4Encoder,
 	 * Use the Function After startRecoder() and Before stopRecoder().
 	 * @return
 	 */
 	public YuvImage getThumbnailImage() {
-		if(mEncoder != null){
-			return mEncoder.getThumbnailImage();
+		if(mp4Encoder != null){
+			return mp4Encoder.getThumbnailImage();
 		}
 		return null;
 	}
 
 	public void stopRecoder() {
-		if(mEncoder != null && isCapture()){
-			mEncoder.close();
-			mEncoder = null;
+		if(isCapture()) {
+			if (mp4Encoder != null) {
+				mp4Encoder.close();
+				mp4Encoder = null;
+			}
+
+			if(audioRecordThread != null && audioRecord != null){
+				isAudioRecord = false;
+				try {
+					audioRecordThread.join();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+
+//			try {
+//				outputStream.close();
+//			} catch (IOException e) {
+//				e.printStackTrace();
+//			}
 		}
 	}
 
@@ -328,7 +417,7 @@ public final class USBMonitor {
 						}
 						catch (Exception e){
 							e.printStackTrace();
-							notifyOnDeviceConnectListener(DEVICE_STATE_DISCONNECT);
+							notifyOnDeviceConnectListener(DEVICE_STATE_CANCEL);
 						}
 					}
 				}
@@ -349,7 +438,7 @@ public final class USBMonitor {
 								}
 								catch (Exception e){
 									e.printStackTrace();
-									notifyOnDeviceConnectListener(DEVICE_STATE_DISCONNECT);
+									notifyOnDeviceConnectListener(DEVICE_STATE_CANCEL);
 								}
 							}
 						}
@@ -361,6 +450,9 @@ public final class USBMonitor {
 					if (device != null) {
 						stopRecoder();
 						stopCapture();
+						if(getUsbCameraConnect()){
+							notifyOnDeviceConnectListener(DEVICE_STATE_DISCONNECT);
+						}
 						releaseCamera();
 						notifyOnDeviceConnectListener(DEVICE_STATE_DETHCH);
 					}
@@ -522,7 +614,7 @@ public final class USBMonitor {
 	}
 
 	public MPEG4Encoder getEncoder() {
-		return mEncoder;
+		return mp4Encoder;
 	}
 
 	public boolean isAutoFocus() {

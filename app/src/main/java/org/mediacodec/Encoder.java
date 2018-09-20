@@ -1,22 +1,6 @@
 package org.mediacodec;
 
-
-/**
- * 编码接口
- * @author chenyang
- *
- */
 public interface Encoder extends Codec {
-
-	/**
-	 * 打开编码器
-	 */
-	public void open();
-
-	/**
-	 * 关闭编码器
-	 */
-	public void close();
 	
 	/**
 	 * 编码方法

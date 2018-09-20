@@ -1,10 +1,5 @@
 package org.mediacodec;
 
-/**
- * 编解码接口
- * @author chenyang
- *
- */
 public interface Codec {
 	
 	/**
@@ -41,6 +36,11 @@ public interface Codec {
 	 * 关闭解码器
 	 */
 	public void close();
+
+	/**
+	 * 刷新解码器
+	 */
+	public void flush();
 
 	/**
 	 * 配置解码器
