@@ -338,9 +338,9 @@ int UVCPreview::startPreview() {
 		mIsRunning = true;
 		pthread_mutex_lock(&preview_mutex);
 		{
-			if (LIKELY(mPreviewWindow)) {
+			// if (LIKELY(mPreviewWindow)) {
 				result = pthread_create(&preview_thread, NULL, preview_thread_func, (void *)this);
-			}
+			// }
 		}
 		pthread_mutex_unlock(&preview_mutex);
 		if (UNLIKELY(result != EXIT_SUCCESS)) {
